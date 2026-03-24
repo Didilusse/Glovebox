@@ -1,0 +1,10 @@
+pip freeze > requirements.txt
+```
+
+That captures the exact versions of everything currently installed in your venv. It should output something like:
+```
+annotated-types==0.7.0
+anyio==4.9.0
+fastapi==0.115.12
+...
+uvicorn==0.34.2
