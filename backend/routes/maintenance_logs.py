@@ -14,8 +14,13 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
     
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
-        
-    # TODO: Create and save the maintenance log
+    
+    if log_data.mileage > car.get("mileage", 0):
+        car["mileage"] = log_data.mileage
+
+    await car_collection.update_one({"_id": ObjectId(vehicle_id)}, {"$set": {"mileage": car["mileage"]}})
+    
+
     maintenanceLog = MaintenanceLog(
         vehicle_id=PydanticObjectId(vehicle_id),
         date_of_service=log_data.date_of_service,
