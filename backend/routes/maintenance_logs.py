@@ -1,22 +1,22 @@
-from beanie import Document, PydanticObjectId
+from beanie import  PydanticObjectId
 from fastapi import APIRouter, HTTPException
+from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog, MaintenanceLogCreate, MaintenanceLogUpdate
 from backend.database import get_car_collection
 from typing import List
-from pydantic import BaseModel
 router = APIRouter(prefix="/vehicles/{vehicle_id}/logs", tags=["Maintenance Logs"])
 
 @router.post("/", response_model=MaintenanceLog, status_code=201)
 async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate):
     car_collection = get_car_collection()
-    car = await car_collection.find_one({"_id": PydanticObjectId(vehicle_id)})
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
     
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
-    if log_data.mileage > car.get("mileage", 0):
-        await car_collection.update_one({"_id": PydanticObjectId(vehicle_id)}, 
-                                    {"$set": {"mileage": log_data.mileage}})
+    if log_data.mileage > (car.mileage or 0):
+        car.mileage = log_data.mileage                    
+        await car.save()
     
 
     maintenanceLog = MaintenanceLog(
@@ -28,8 +28,7 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
 
 @router.get("/", response_model=List[MaintenanceLog])
 async def get_maintenance_logs(vehicle_id: str):
-    car_collection = get_car_collection()
-    car = await car_collection.find_one({"_id": PydanticObjectId(vehicle_id)})
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
     
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -39,8 +38,7 @@ async def get_maintenance_logs(vehicle_id: str):
 
 @router.get("/{log_id}", response_model=MaintenanceLog)
 async def get_maintenance_log(vehicle_id: str, log_id: str):
-    car_collection = get_car_collection()
-    car = await car_collection.find_one({"_id": PydanticObjectId(vehicle_id)})
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
     
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -54,8 +52,7 @@ async def get_maintenance_log(vehicle_id: str, log_id: str):
 
 @router.patch("/{log_id}", response_model=MaintenanceLog)
 async def update_maintenance_log(vehicle_id: str, log_id: str, log_data: MaintenanceLogUpdate):
-    car_collection = get_car_collection()
-    car = await car_collection.find_one({"_id": PydanticObjectId(vehicle_id)})
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
     
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -75,8 +72,7 @@ async def update_maintenance_log(vehicle_id: str, log_id: str, log_data: Mainten
 
 @router.delete("/{log_id}", status_code=204)
 async def delete_maintenance_log(vehicle_id: str, log_id: str):
-    car_collection = get_car_collection()
-    car = await car_collection.find_one({"_id": PydanticObjectId(vehicle_id)})
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
     
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
