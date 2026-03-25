@@ -1,8 +1,10 @@
+from beanie import Document, PydanticObjectId
 from fastapi import APIRouter, HTTPException
 from bson import ObjectId
-from backend.models.maintenance_log import MaintenanceLog, MaintenanceLogCreate
+from backend.models.maintenance_log import MaintenanceLog, MaintenanceLogCreate, MaintenanceLogUpdate
 from backend.database import get_car_collection
-
+from typing import List
+from pydantic import BaseModel
 router = APIRouter(prefix="/vehicles/{vehicle_id}/logs", tags=["Maintenance Logs"])
 
 @router.post("/", response_model=MaintenanceLog, status_code=201)
@@ -14,3 +16,75 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
         raise HTTPException(status_code=404, detail="Vehicle not found")
         
     # TODO: Create and save the maintenance log
+    maintenanceLog = MaintenanceLog(
+        vehicle_id=PydanticObjectId(vehicle_id),
+        date_of_service=log_data.date_of_service,
+        description=log_data.description,
+        category=log_data.category,
+        cost=log_data.cost,
+        mileage=log_data.mileage
+    )
+    await maintenanceLog.insert()
+    return maintenanceLog
+
+@router.get("/", response_model=List[MaintenanceLog])
+async def get_maintenance_logs(vehicle_id: str):
+    car_collection = get_car_collection()
+    car = await car_collection.find_one({"_id": ObjectId(vehicle_id)})
+    
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    maintenance_logs = await MaintenanceLog.find(MaintenanceLog.vehicle_id == ObjectId(vehicle_id)).to_list()
+    return maintenance_logs
+
+@router.get("/{log_id}", response_model=MaintenanceLog)
+async def get_maintenance_log(vehicle_id: str, log_id: str):
+    car_collection = get_car_collection()
+    car = await car_collection.find_one({"_id": ObjectId(vehicle_id)})
+    
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    maintenance_log = await MaintenanceLog.get(ObjectId(log_id))
+    
+    if not maintenance_log or maintenance_log.vehicle_id != ObjectId(vehicle_id):
+        raise HTTPException(status_code=404, detail="Maintenance log not found for this vehicle")
+    
+    return maintenance_log
+
+@router.patch("/{log_id}", response_model=MaintenanceLog)
+async def update_maintenance_log(vehicle_id: str, log_id: str, log_data: MaintenanceLogUpdate):
+    car_collection = get_car_collection()
+    car = await car_collection.find_one({"_id": ObjectId(vehicle_id)})
+    
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    update_data = log_data.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields provided for update")
+    
+    maintenance_log = await MaintenanceLog.get(ObjectId(log_id))
+    
+    if not maintenance_log or maintenance_log.vehicle_id != ObjectId(vehicle_id):
+        raise HTTPException(status_code=404, detail="Maintenance log not found for this vehicle")
+    
+    await maintenance_log.update({"$set": update_data})
+    updated_log = await MaintenanceLog.get(ObjectId(log_id))
+    return updated_log
+
+@router.delete("/{log_id}", status_code=204)
+async def delete_maintenance_log(vehicle_id: str, log_id: str):
+    car_collection = get_car_collection()
+    car = await car_collection.find_one({"_id": ObjectId(vehicle_id)})
+    
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    maintenance_log = await MaintenanceLog.get(ObjectId(log_id))
+    
+    if not maintenance_log or maintenance_log.vehicle_id != ObjectId(vehicle_id):
+        raise HTTPException(status_code=404, detail="Maintenance log not found for this vehicle")
+    
+    await maintenance_log.delete()
