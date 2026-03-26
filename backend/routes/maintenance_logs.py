@@ -17,7 +17,6 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
     if log_data.mileage > (car.mileage or 0):
         car.mileage = log_data.mileage                    
         await car.save()
-    
 
     maintenanceLog = MaintenanceLog(
         vehicle_id=PydanticObjectId(vehicle_id),
@@ -27,27 +26,45 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
     return maintenanceLog
 
 @router.get("/", response_model=List[MaintenanceLog])
-async def get_maintenance_logs(vehicle_id: str):
+async def get_maintenance_logs(vehicle_id: str, category: str | None = None, min_cost: float | None = None, max_cost: float | None = None, sort_by: str | None = None, sort_order: str = "asc"):
     car = await CarModel.get(PydanticObjectId(vehicle_id))
-    
+
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
+
     
-    maintenance_logs = await MaintenanceLog.find(MaintenanceLog.vehicle_id == PydanticObjectId(vehicle_id)).to_list()
+    query = MaintenanceLog.find(MaintenanceLog.vehicle_id == PydanticObjectId(vehicle_id))
+    if category is not None:
+        query = query.find(MaintenanceLog.category == category)
+    if min_cost is not None:
+        query = query.find(MaintenanceLog.cost >= min_cost)
+    if max_cost is not None:
+        query = query.find(MaintenanceLog.cost <= max_cost)
+
+    if sort_by is not None:
+        if sort_order == "desc":
+            query = query.sort(-getattr(MaintenanceLog, sort_by))
+        else:
+            query = query.sort(getattr(MaintenanceLog, sort_by))
+
+    maintenance_logs = await query.to_list()
     return maintenance_logs
 
 @router.get("/{log_id}", response_model=MaintenanceLog)
 async def get_maintenance_log(vehicle_id: str, log_id: str):
     car = await CarModel.get(PydanticObjectId(vehicle_id))
-    
+
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
-    
-    maintenance_log = await MaintenanceLog.get(PydanticObjectId(log_id))
-    
-    if not maintenance_log or maintenance_log.vehicle_id != PydanticObjectId(vehicle_id):
+
+    maintenance_log = await MaintenanceLog.find_one(
+        MaintenanceLog.id == PydanticObjectId(log_id),
+        MaintenanceLog.vehicle_id == PydanticObjectId(vehicle_id)
+    )
+
+    if not maintenance_log:
         raise HTTPException(status_code=404, detail="Maintenance log not found for this vehicle")
-    
+
     return maintenance_log
 
 @router.patch("/{log_id}", response_model=MaintenanceLog)
