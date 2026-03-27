@@ -30,13 +30,30 @@ async def get_maintenance_logs(vehicle_id: str, category: str | None = None,
                                min_cost: float | None = None, max_cost: float | None = None, 
                                sort_by: str | None = None, sort_order: str = "asc", skip: int = 0, 
                                limit: int = 100):
-    car = await CarModel.get(PydanticObjectId(vehicle_id))
+    # Validate that vehicle_id is valid
+    try:
+        oid = PydanticObjectId(vehicle_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid vehicle ID format")
 
+    # Only allow sorting on known fields to prevent arbitrary attribute access
+    VALID_SORT_FIELDS = {"date_of_service", "cost", "mileage", "category", "description"}
+    if sort_by is not None and sort_by not in VALID_SORT_FIELDS:
+        raise HTTPException(status_code=400, detail=f"Invalid sort_by. Allowed: {sorted(VALID_SORT_FIELDS)}")
+
+    if sort_order not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sort_order. Allowed: 'asc', 'desc'")
+
+    # Ensure cost range is logical before building the query
+    if min_cost is not None and max_cost is not None and min_cost > max_cost:
+        raise HTTPException(status_code=400, detail="min_cost must be <= max_cost")
+
+    car = await CarModel.get(oid)
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
-    
-    query = MaintenanceLog.find(MaintenanceLog.vehicle_id == PydanticObjectId(vehicle_id))
+    # Build query filters based on the given parameters
+    query = MaintenanceLog.find(MaintenanceLog.vehicle_id == oid)
     if category is not None:
         query = query.find(MaintenanceLog.category == category)
     if min_cost is not None:
@@ -47,7 +64,7 @@ async def get_maintenance_logs(vehicle_id: str, category: str | None = None,
         query = query.skip(skip)
     if limit > 0:
         query = query.limit(limit)
-
+    
     if sort_by is not None:
         if sort_order == "desc":
             query = query.sort(-getattr(MaintenanceLog, sort_by))
