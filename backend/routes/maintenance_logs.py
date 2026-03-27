@@ -26,7 +26,10 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
     return maintenanceLog
 
 @router.get("/", response_model=List[MaintenanceLog])
-async def get_maintenance_logs(vehicle_id: str, category: str | None = None, min_cost: float | None = None, max_cost: float | None = None, sort_by: str | None = None, sort_order: str = "asc"):
+async def get_maintenance_logs(vehicle_id: str, category: str | None = None, 
+                               min_cost: float | None = None, max_cost: float | None = None, 
+                               sort_by: str | None = None, sort_order: str = "asc", skip: int = 0, 
+                               limit: int = 100):
     car = await CarModel.get(PydanticObjectId(vehicle_id))
 
     if not car:
@@ -40,6 +43,10 @@ async def get_maintenance_logs(vehicle_id: str, category: str | None = None, min
         query = query.find(MaintenanceLog.cost >= min_cost)
     if max_cost is not None:
         query = query.find(MaintenanceLog.cost <= max_cost)
+    if skip > 0:
+        query = query.skip(skip)
+    if limit > 0:
+        query = query.limit(limit)
 
     if sort_by is not None:
         if sort_order == "desc":
