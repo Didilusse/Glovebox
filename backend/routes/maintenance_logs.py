@@ -4,6 +4,8 @@ from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog, MaintenanceLogCreate, MaintenanceLogUpdate
 from backend.database import get_car_collection
 from typing import List
+
+from backend.models.parts import Parts
 router = APIRouter(prefix="/vehicles/{vehicle_id}/logs", tags=["Maintenance Logs"])
 
 @router.post("/", response_model=MaintenanceLog, status_code=201)
@@ -124,3 +126,36 @@ async def delete_maintenance_log(vehicle_id: str, log_id: str):
         raise HTTPException(status_code=404, detail="Maintenance log not found for this vehicle")
     
     await maintenance_log.delete()
+
+@router.post("/{log_id}/parts", response_model=MaintenanceLog)
+async def add_part_to_log(vehicle_id: str, log_id: str, part_data: Parts):
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    maintenance_log = await MaintenanceLog.get(PydanticObjectId(log_id))
+    if not maintenance_log or maintenance_log.vehicle_id != PydanticObjectId(vehicle_id):
+        raise HTTPException(status_code=404, detail="Maintenance log not found")
+    
+    await maintenance_log.update({"$push": {"parts": part_data.model_dump()}})
+    updated_log = await MaintenanceLog.get(PydanticObjectId(log_id))
+    return updated_log
+
+@router.delete("/{log_id}/parts/{part_index}", response_model=MaintenanceLog)
+async def delete_part_from_log(vehicle_id: str, log_id: str, part_index: int):
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    maintenance_log = await MaintenanceLog.get(PydanticObjectId(log_id))
+    if not maintenance_log or maintenance_log.vehicle_id != PydanticObjectId(vehicle_id):
+        raise HTTPException(status_code=404, detail="Maintenance log not found")
+        
+    
+    if part_index < 0 or part_index >= len(maintenance_log.parts):
+        raise HTTPException(status_code=400, detail="Invalid part index")
+    
+    maintenance_log.parts.pop(part_index)
+    await maintenance_log.save()
+    
+    return maintenance_log

@@ -2,6 +2,7 @@ from beanie import Document, PydanticObjectId
 from pydantic import ConfigDict, Field, BaseModel
 from typing import Optional
 from datetime import date
+from backend.models.parts import Parts
 
 class MaintenanceLog(Document):
     vehicle_id: PydanticObjectId
@@ -10,7 +11,7 @@ class MaintenanceLog(Document):
     category: str
     cost: float
     mileage: int
-
+    parts: list[Parts] = Field(default_factory=list)
     class Settings:
         name = "maintenance_logs"
 
@@ -20,6 +21,7 @@ class MaintenanceLogCreate(BaseModel):
     category: str = Field(..., description="The category of the maintenance performed")
     cost: float = Field(..., description="The cost of the maintenance performed")
     mileage: int = Field(..., description="The mileage of the vehicle at the time of maintenance")
+    parts: list[Parts] = Field(default_factory=list)
 
 class MaintenanceLogUpdate(BaseModel):
     date_of_service: date | None = Field(None, description="The date the maintenance was performed")
@@ -27,3 +29,4 @@ class MaintenanceLogUpdate(BaseModel):
     category: str | None = Field(None, description="The category of the maintenance performed")
     cost: float | None = Field(None, description="The cost of the maintenance performed")
     mileage: int | None = Field(None, description="The mileage of the vehicle at the time of maintenance")
+    parts: list[Parts] = Field(default_factory=list)
