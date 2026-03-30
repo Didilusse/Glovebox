@@ -20,7 +20,7 @@ async def create_maintenance_log(vehicle_id: str, log_data: MaintenanceLogCreate
 
     log_dict = log_data.model_dump()
     if log_dict["parts"]:
-        log_dict["cost"] = sum(part["cost"] for part in log_dict["parts"])
+        log_dict["cost"] = sum(part.get("cost") or 0 for part in log_dict["parts"])
 
     maintenanceLog = MaintenanceLog(
         vehicle_id=PydanticObjectId(vehicle_id),

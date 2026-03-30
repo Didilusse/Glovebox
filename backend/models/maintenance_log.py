@@ -19,7 +19,7 @@ class MaintenanceLogCreate(BaseModel):
     date_of_service: date = Field(..., description="The date the maintenance was performed")
     description: str = Field(..., description="A description of the maintenance performed")
     category: str = Field(..., description="The category of the maintenance performed")
-    cost: float = Field(..., description="The cost of the maintenance performed")
+    cost: float = Field(0, description="The cost of the maintenance performed")
     mileage: int = Field(..., description="The mileage of the vehicle at the time of maintenance")
     parts: list[Parts] = Field(default_factory=list)
 
