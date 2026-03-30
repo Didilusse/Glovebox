@@ -111,6 +111,25 @@ async def get_vehicle_stats(vehicle_id: str):
 
     stats = result[0]
     stats.pop("_id", None)
+
+    category_pipeline = [
+        {"$match": {"vehicle_id": PydanticObjectId(vehicle_id)}},
+        {"$group": {
+            "_id": "$category",
+            "total_spent": {"$sum": "$cost"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"total_spent": -1}}
+    ]
+
+    category_cursor = collection.aggregate(category_pipeline)
+    category_result = await category_cursor.to_list(length=None) # type: ignore[attr-defined]
+
+    stats["cost_by_category"] = {
+        entry["_id"]: {"total_spent": entry["total_spent"], "count": entry["count"]}
+        for entry in category_result
+    }
+
     return stats
 
 @router.get("/{log_id}", response_model=MaintenanceLog)
