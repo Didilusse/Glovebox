@@ -3,17 +3,17 @@ from fastapi import APIRouter, HTTPException
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog
 
-router = APIRouter(prefix="/vehicles/{vehicle_id}/stats", tags=["Stats"])
+router = APIRouter(prefix="/cars/{car_id}/stats", tags=["Stats"])
 
 
 @router.get("/")
-async def get_vehicle_stats(vehicle_id: str):
-    car = await CarModel.get(PydanticObjectId(vehicle_id))
+async def get_vehicle_stats(car_id: str):
+    car = await CarModel.get(PydanticObjectId(car_id))
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     pipeline = [
-        {"$match": {"vehicle_id": PydanticObjectId(vehicle_id)}},
+        {"$match": {"car_id": PydanticObjectId(car_id)}},
         {"$group": {
             "_id": None,
             "log_count": {"$sum": 1},
@@ -40,7 +40,7 @@ async def get_vehicle_stats(vehicle_id: str):
     stats.pop("_id", None)
 
     category_pipeline = [
-        {"$match": {"vehicle_id": PydanticObjectId(vehicle_id)}},
+        {"$match": {"car_id": PydanticObjectId(car_id)}},
         {"$group": {
             "_id": "$category",
             "total_spent": {"$sum": "$cost"},

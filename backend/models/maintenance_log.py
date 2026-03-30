@@ -5,7 +5,7 @@ from datetime import date
 from backend.models.parts import Parts
 
 class MaintenanceLog(Document):
-    vehicle_id: PydanticObjectId
+    car_id: PydanticObjectId
     date_of_service: date
     description: str
     category: str
