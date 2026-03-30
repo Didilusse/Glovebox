@@ -76,6 +76,39 @@ async def get_maintenance_logs(vehicle_id: str, category: str | None = None,
     maintenance_logs = await query.to_list()
     return maintenance_logs
 
+@router.get("/stats")
+async def get_vehicle_stats(vehicle_id: str):
+    car = await CarModel.get(PydanticObjectId(vehicle_id))
+    if not car:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    pipeline = [
+        {"$match": {"vehicle_id": PydanticObjectId(vehicle_id)}},
+        {"$group": {
+            "_id": None,
+            "log_count": {"$sum": 1},
+            "avg_cost_per_service": {"$avg": "$cost"},
+            "total_spent": {"$sum": "$cost"},
+            "max_cost": {"$max": "$cost"}
+        }}
+    ]
+
+    collection = MaintenanceLog.get_pymongo_collection()
+    cursor = collection.aggregate(pipeline)  
+    result = await cursor.to_list(length=None) # type: ignore[attr-defined]
+
+    if not result:
+        return {
+            "log_count": 0,
+            "avg_cost_per_service": 0.0,
+            "total_spent": 0.0,
+            "max_cost": 0.0
+        }
+
+    stats = result[0]
+    stats.pop("_id", None)
+    return stats
+
 @router.get("/{log_id}", response_model=MaintenanceLog)
 async def get_maintenance_log(vehicle_id: str, log_id: str):
     car = await CarModel.get(PydanticObjectId(vehicle_id))
