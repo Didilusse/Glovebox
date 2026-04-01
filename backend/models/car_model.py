@@ -16,6 +16,7 @@ class CarModel(Document):
     model: str = Field(..., description="The model name")
     year: int = Field(..., description="What year the car was made")
     mileage: Optional[int] = Field(None, description="Current mileage of the vehicle")
+    initial_mileage: Optional[int] = Field(None, description="Odometer reading when the car was added")
     vin: Optional[str] = Field(None, description="Vehicle Identification Number")
     license_plate: Optional[str] = Field(None, description="License plate number")
     fuel_type: Optional[FuelType] = Field(None, description="Fuel type: gas, diesel, or electric")

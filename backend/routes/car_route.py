@@ -7,7 +7,9 @@ from backend.database import get_car_collection
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
 @router.post("/", response_model=CarModel, status_code=201)                                                                                                                                                      
-async def add_car(car: CarModel):                     
+async def add_car(car: CarModel):
+      if car.initial_mileage is None and car.mileage is not None:
+            car.initial_mileage = car.mileage
       await car.insert()
       return car                                                                                                                                                                                                   
    

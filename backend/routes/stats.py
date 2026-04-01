@@ -52,6 +52,11 @@ async def get_vehicle_stats(car_id: str):
     category_cursor = collection.aggregate(category_pipeline)
     category_result = await category_cursor.to_list(length=None)  # type: ignore[attr-defined]
 
+    if car.mileage is not None and car.initial_mileage is not None:
+        stats["distance_travelled"] = car.mileage - car.initial_mileage
+    else:
+        stats["distance_travelled"] = None
+
     stats["cost_by_category"] = {
         entry["_id"]: {"total_spent": entry["total_spent"], "count": entry["count"]}
         for entry in category_result
