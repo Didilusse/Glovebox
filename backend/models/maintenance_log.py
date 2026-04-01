@@ -16,7 +16,8 @@ class MaintenanceLog(Document):
     done_by: DoneBy
     mileage: int
     cost: float
-    notes: str
+    work_done: str
+    notes: Optional[str] = None
 
     class Settings:
         name = "maintenance_logs"
@@ -27,7 +28,8 @@ class MaintenanceLogCreate(BaseModel):
     done_by: DoneBy = Field(..., description="Who performed the work: self or shop")
     mileage: int = Field(..., description="Odometer reading at the time of service")
     cost: float = Field(..., description="The cost of the service")
-    notes: str = Field(..., description="What work was done")
+    work_done: str = Field(..., description="What work was done")
+    notes: Optional[str] = Field(None, description="Additional details like parts or products used")
 
 
 class MaintenanceLogUpdate(BaseModel):
@@ -35,4 +37,5 @@ class MaintenanceLogUpdate(BaseModel):
     done_by: Optional[DoneBy] = Field(None, description="Who performed the work: self or shop")
     mileage: Optional[int] = Field(None, description="Odometer reading at the time of service")
     cost: Optional[float] = Field(None, description="The cost of the service")
-    notes: Optional[str] = Field(None, description="What work was done")
+    work_done: Optional[str] = Field(None, description="What work was done")
+    notes: Optional[str] = Field(None, description="Additional details like parts or products used")

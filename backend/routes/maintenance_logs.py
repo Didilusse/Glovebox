@@ -34,7 +34,7 @@ async def get_maintenance_logs(car_id: str, done_by: str | None = None,
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid car ID format")
 
-    VALID_SORT_FIELDS = {"date_of_service", "cost", "mileage", "done_by", "notes"}
+    VALID_SORT_FIELDS = {"date_of_service", "cost", "mileage", "done_by", "work_done"}
     if sort_by is not None and sort_by not in VALID_SORT_FIELDS:
         raise HTTPException(status_code=400, detail=f"Invalid sort_by. Allowed: {sorted(VALID_SORT_FIELDS)}")
 
