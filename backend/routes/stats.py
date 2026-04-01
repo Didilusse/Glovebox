@@ -33,33 +33,34 @@ async def get_vehicle_stats(car_id: str):
             "avg_cost_per_service": 0.0,
             "total_spent": 0.0,
             "max_cost": 0.0,
-            "cost_by_category": {}
+            "distance_travelled": None,
+            "cost_by_done_by": {}
         }
 
     stats = result[0]
     stats.pop("_id", None)
-
-    category_pipeline = [
-        {"$match": {"car_id": PydanticObjectId(car_id)}},
-        {"$group": {
-            "_id": "$category",
-            "total_spent": {"$sum": "$cost"},
-            "count": {"$sum": 1}
-        }},
-        {"$sort": {"total_spent": -1}}
-    ]
-
-    category_cursor = collection.aggregate(category_pipeline)
-    category_result = await category_cursor.to_list(length=None)  # type: ignore[attr-defined]
 
     if car.mileage is not None and car.initial_mileage is not None:
         stats["distance_travelled"] = car.mileage - car.initial_mileage
     else:
         stats["distance_travelled"] = None
 
-    stats["cost_by_category"] = {
+    done_by_pipeline = [
+        {"$match": {"car_id": PydanticObjectId(car_id)}},
+        {"$group": {
+            "_id": "$done_by",
+            "total_spent": {"$sum": "$cost"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"total_spent": -1}}
+    ]
+
+    done_by_cursor = collection.aggregate(done_by_pipeline)
+    done_by_result = await done_by_cursor.to_list(length=None)  # type: ignore[attr-defined]
+
+    stats["cost_by_done_by"] = {
         entry["_id"]: {"total_spent": entry["total_spent"], "count": entry["count"]}
-        for entry in category_result
+        for entry in done_by_result
     }
 
     return stats
