@@ -1,8 +1,14 @@
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException
 from backend.models.car_model import CarModel
-from backend.models.maintenance_log import MaintenanceLog, MaintenanceLogCreate, MaintenanceLogUpdate
+from backend.models.maintenance_log import (
+    MaintenanceLog,
+    MaintenanceLogCreate,
+    MaintenanceLogUpdate,
+)
 from typing import List
+
+from backend.services.reminders import calculate_next_reminder
 
 router = APIRouter(prefix="/cars/{car_id}/logs", tags=["Maintenance Logs"])
 
@@ -17,8 +23,17 @@ async def create_maintenance_log(car_id: str, log_data: MaintenanceLogCreate):
         car.mileage = log_data.mileage
         await car.save()
 
+    reminder_date, reminder_mileage = calculate_next_reminder(
+        date_of_service=log_data.date_of_service,
+        mileage=log_data.mileage,
+        interval_months=log_data.interval_months,
+        interval_miles=log_data.interval_miles,
+    )
+
     maintenanceLog = MaintenanceLog(
         car_id=PydanticObjectId(car_id),
+        reminder_date=reminder_date,
+        reminder_mileage=reminder_mileage,
         **log_data.model_dump()
     )
     await maintenanceLog.insert()
@@ -102,7 +117,23 @@ async def update_maintenance_log(car_id: str, log_id: str, log_data: Maintenance
     if not maintenance_log or maintenance_log.car_id != PydanticObjectId(car_id):
         raise HTTPException(status_code=404, detail="Maintenance log not found for this car")
 
-    await maintenance_log.update({"$set": update_data})
+    updated_payload = maintenance_log.model_dump()
+    updated_payload.update(update_data)
+
+    reminder_date, reminder_mileage = calculate_next_reminder(
+        date_of_service=updated_payload["date_of_service"],
+        mileage=updated_payload["mileage"],
+        interval_months=updated_payload.get("interval_months"),
+        interval_miles=updated_payload.get("interval_miles"),
+    )
+
+    updated_payload["reminder_date"] = reminder_date
+    updated_payload["reminder_mileage"] = reminder_mileage
+
+    for key, value in updated_payload.items():
+        setattr(maintenance_log, key, value)
+
+    await maintenance_log.save()
     updated_log = await MaintenanceLog.get(PydanticObjectId(log_id))
     return updated_log
 

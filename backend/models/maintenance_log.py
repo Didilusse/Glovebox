@@ -4,7 +4,6 @@ from typing import Optional
 from datetime import date
 from enum import Enum
 
-
 class DoneBy(str, Enum):
     self_ = "self"
     shop = "shop"
@@ -18,6 +17,17 @@ class MaintenanceLog(Document):
     cost: float
     work_done: str
     notes: Optional[str] = None
+    interval_miles: int | None = 5000
+    interval_months: int | None = 6
+    reminder_date: Optional[date] = Field(
+        None,
+        description="The calculated date when the next maintenance reminder should be sent."
+    )
+    reminder_mileage: Optional[int] = Field(
+        None,
+        description="The calculated mileage when the next maintenance reminder should be sent."
+    )
+
 
     class Settings:
         name = "maintenance_logs"
@@ -30,6 +40,8 @@ class MaintenanceLogCreate(BaseModel):
     cost: float = Field(..., description="The cost of the service")
     work_done: str = Field(..., description="What work was done")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
+    interval_miles: int | None = 5000
+    interval_months: int | None = 6
 
 
 class MaintenanceLogUpdate(BaseModel):
@@ -39,3 +51,16 @@ class MaintenanceLogUpdate(BaseModel):
     cost: Optional[float] = Field(None, description="The cost of the service")
     work_done: Optional[str] = Field(None, description="What work was done")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
+
+
+class MaintenanceReminder(BaseModel):
+    log_id: PydanticObjectId
+    car_id: PydanticObjectId
+    date_of_service: date
+    mileage: int
+    work_done: str
+    reminder_date: Optional[date] = None
+    reminder_mileage: Optional[int] = None
+    current_mileage: Optional[int] = None
+    is_due: bool = False
+    due_reason: Optional[str] = None
