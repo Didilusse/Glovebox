@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from backend.database import init_db
-from backend.routes import maintenance_logs, car_route, stats, reminder
+from backend.routes import maintenance_logs, car_route, stats, reminder, mods
 
 
 @asynccontextmanager
@@ -16,3 +16,4 @@ app.include_router(car_route.router)
 app.include_router(maintenance_logs.router)
 app.include_router(reminder.router)
 app.include_router(stats.router)
+app.include_router(mods.router)

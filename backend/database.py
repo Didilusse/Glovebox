@@ -3,7 +3,7 @@ from beanie import init_beanie
 from backend.config import settings
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog
-
+from backend.models.mod import ModItem
 
 client = AsyncIOMotorClient(settings.mongodb_uri)
 db = client.get_database(settings.database_name)
@@ -16,6 +16,7 @@ async def init_db():
         database=client[settings.database_name], # type: ignore
         document_models=[
             MaintenanceLog,
-            CarModel
+            CarModel,
+            ModItem
         ]
     )

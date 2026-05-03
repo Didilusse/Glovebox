@@ -2,6 +2,7 @@ from beanie import Document, PydanticObjectId
 from pydantic import Field
 from enum import Enum
 from typing import Optional
+from pydantic import BaseModel
 
 class ModType(str, Enum):
     maintenance = "maintenance"
@@ -15,7 +16,7 @@ class Category(str, Enum):
     wheels = "wheels"
     brakes = "brakes"
     exhaust = "exhaust"
-    fluids = "fluids" # Added this as it's useful for maintenance!
+    fluids = "fluids" 
 
 class Status(str, Enum):
     planned = "planned"
@@ -27,7 +28,7 @@ class ModItem(Document):
     name: str = Field(..., description="The name of the item")
     type: ModType = Field(..., description="The type of item: maintenance or modification")
     category: Category = Field(..., description="The category of the item")
-    cost: float = Field(0.0, description="The cost of the item") # Defaulted to 0.0 to prevent errors on free items
+    cost: float = Field(0.0, description="The cost of the item") 
     status: Status = Field(default=Status.planned, description="The current status of the item")
     url: Optional[str] = Field(None, description="A URL for more information about the item")
     brand: Optional[str] = Field(None, description="The brand of the part used in the item")
@@ -35,3 +36,23 @@ class ModItem(Document):
 
     class Settings:
         name = "mods" 
+
+class ModItemCreate(BaseModel):
+    name: str
+    type: ModType
+    category: Category
+    cost: float = 0.0
+    status: Status = Status.planned
+    url: Optional[str] = None
+    brand: Optional[str] = None
+    notes: Optional[str] = None
+
+class ModItemUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[ModType] = None
+    category: Optional[Category] = None
+    cost: Optional[float] = None
+    status: Optional[Status] = None
+    url: Optional[str] = None
+    brand: Optional[str] = None
+    notes: Optional[str] = None
