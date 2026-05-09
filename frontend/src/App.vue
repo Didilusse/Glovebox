@@ -6,7 +6,7 @@
       <div class="form-section">
         <h2>Add a Car</h2>
         <div>Enter Car Make:</div>
-        <input v-model="make" placeholder="Toyota" @blur="makeTouched = true" />
+        <input v-model="make" placeholder="Toyota" />
 
         <div>Enter Car Model:</div>
         <input v-model="model" placeholder="Camry" />
@@ -28,7 +28,8 @@
 import { ref, onMounted, computed } from 'vue'
 import CarList from './components/CarList.vue'
 import Toast, { showToast } from './components/Toast.vue'
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
+const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
 const make = ref('')
 const model = ref('')
 const year = ref('')
@@ -42,8 +43,6 @@ const isFormValid = computed(() => {
          mileage.value.toString().trim() !== '' &&
          mileage.value >= 0
 })
-const makeTouched = ref(false)
-
 
 const cars = ref([])
 
@@ -110,37 +109,6 @@ async function handleDeleteCar(carId) {
   console.log(`Car with ID ${carId} deleted successfully`)
   // Refresh the car list
   showToast('Car deleted successfully', 'success')
-  await   async function handleCreateCar() {
-    const payload = {
-      make: make.value,
-      model: model.value,
-      year: year.value,
-      mileage: mileage.value
-    }
-  
-    const response = await fetch(`${API_BASE}/cars/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-  
-    if (!response.ok) {
-      showToast('Failed to create car', 'error')
-      throw new Error('Failed to create car')
-    }
-  
-    const data = await response.json()
-    cars.value.push(data)
-    showToast('Car created successfully', 'success')
-  
-    make.value = ''
-    model.value = ''
-    year.value = ''
-    mileage.value = ''
-    await handleFetchCars()
-  }
 }
 </script>
 

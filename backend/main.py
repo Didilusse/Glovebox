@@ -10,17 +10,13 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-origins = [
-    "http://localhost:5173", 
-    "http://localhost:8080", 
-]
-
 app = FastAPI(title="Glovebox API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, 
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_origin_regex=r"https?://.*",
+    allow_credentials=False,
     allow_methods=["*"], 
     allow_headers=["*"],
 )
