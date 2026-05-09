@@ -14,6 +14,7 @@ pydantic-settings==2.13.1
 pydantic_core==2.41.5
 pymongo==4.16.0
 python-dotenv==1.2.2
+python-dateutil==2.9.0.post0
 starlette==1.0.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
