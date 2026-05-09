@@ -9,18 +9,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY ../requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire project
-COPY .. .
+# Copy the backend package into the image
+COPY backend ./backend
 
 
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/docs')" || exit 1
+    CMD python -c "from urllib.request import urlopen; urlopen('http://localhost:8000/docs').read()"
 
 # Run uvicorn server
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
