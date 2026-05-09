@@ -2,7 +2,7 @@
   <div class="garage-container">
     <h2 class="title">Garage</h2>
     
-    <div v-for="car in inventory" :key="car.id" class="car-card">
+    <div v-for="car in inventory" :key="car._id" class="car-card">
       <div class="car-info-main">
         {{ car.make }} {{ car.model }}
       </div>
@@ -12,6 +12,7 @@
       <div class="car-stats">
        Mileage: {{ car.mileage !== null ? car.mileage + ' miles' : 'N/A' }}
       </div>
+      <button class="button" @click="() => $emit('delete', car._id)">Delete</button>
     </div>
   </div>
 </template>
@@ -20,6 +21,7 @@
 const cars = defineProps({
   inventory: Array
 })
+
 </script>
 
 <style scoped>
@@ -37,6 +39,14 @@ const cars = defineProps({
     font-weight: bold;
     text-align: center;
     margin-bottom: 20px;
+  }
+  .button {
+    background-color: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
   }
 
   .car-card {
