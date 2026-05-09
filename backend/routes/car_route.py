@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from beanie import PydanticObjectId
+from fastapi import APIRouter, HTTPException, Path
 from typing import List
 from backend.models.car_model import CarModel
 from backend.database import get_car_collection
@@ -25,11 +26,27 @@ async def get_car(car_id: str):
       return car
 
 @router.delete("/{car_id}", status_code=204)
-async def delete_car(car_id: str):
+async def delete_car(
+    car_id: PydanticObjectId = Path(..., description="The ID of the car to delete")
+):
       car = await CarModel.get(car_id)
+      
+      #print(f"DEBUG: Attempting to delete car with ID: {car_id}")
       if not car:
-            raise HTTPException(status_code=404, detail="Car not found")
-      await car.delete()
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Car with ID {car_id} not found"
+        )
+    
+      try:
+        await car.delete()
+      except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail="An error occurred while deleting the car"
+        )
+        
+      return None 
 
 @router.patch("/{car_id}", response_model=CarModel)
 async def update_car(car_id: str, car_data: CarModel):
