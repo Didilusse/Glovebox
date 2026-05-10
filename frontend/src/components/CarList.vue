@@ -12,16 +12,24 @@
       <div class="car-stats">
        Mileage: {{ car.mileage !== null ? car.mileage + ' miles' : 'N/A' }}
       </div>
-      <button class="button" @click="() => $emit('delete', car._id)">Delete</button>
+      <button class="view" @click="() => $emit('view', car._id)">View</button>
+      <button class="delete" @click="() => $emit('delete', car._id)">Delete</button>
+    </div>
+
+    <!-- Add car card -->
+    <div @click="emit('add')" class="add-car-card">
+      <h2>Add a new car</h2>
     </div>
   </div>
+  
 </template>
 
 <script setup>
-const cars = defineProps({
+const emit = defineEmits(['view', 'delete', 'add'])
+
+defineProps({
   inventory: Array
 })
-
 </script>
 
 <style scoped>
@@ -40,13 +48,24 @@ const cars = defineProps({
     text-align: center;
     margin-bottom: 20px;
   }
-  .button {
+  .delete {
     background-color: #dc3545;
     color: white;
     border: 1px solid #dc3545;
     padding: 5px 10px;
     border-radius: 5px;
     cursor: pointer;
+    margin-left: 10px;
+  }
+
+  .view {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
   }
 
   .car-card {
@@ -58,6 +77,19 @@ const cars = defineProps({
     width: 100%;
     max-width: 300px;
     text-align: center; 
+  }
+
+  .add-car-card {
+    border: 1px dashed #ccc;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    box-shadow: none;
+    width: 100%;
+    max-width: 300px;
+    text-align: center; 
+    font-weight: bold;
+    cursor: pointer;
   }
 
   .car-info-main {
