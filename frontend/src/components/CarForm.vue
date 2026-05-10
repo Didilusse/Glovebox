@@ -1,5 +1,9 @@
 <template>
-  <div class="new-car">
+  <div class="car-form">
+    <button type="button" class="close-button" aria-label="Close form" @click="emit('close')">
+      &times;
+    </button>
+
     <h2>Add a Car</h2>
 
     <form class="form-section" @submit.prevent="handleCreateCar">
@@ -15,12 +19,12 @@
 
       <label>
         <span>Enter Car Year:</span>
-        <input v-model="year" type="number" inputmode="numeric" min="1900" max="9999" placeholder="2020" />
+        <input v-model="year" min="1900" max="9999" placeholder="2020" />
       </label>
 
       <label>
         <span>Enter Car Mileage:</span>
-        <input v-model="mileage" type="number" inputmode="numeric" min="0" placeholder="50000" />
+        <input v-model="mileage" min="0" placeholder="50000" />
       </label>
 
       <button type="submit">Create Car</button>
@@ -39,7 +43,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['created'])
+const emit = defineEmits(['created', 'close'])
 
 const make = ref('')
 const model = ref('')
@@ -97,20 +101,38 @@ async function handleCreateCar() {
 </script>
 
 <style scoped>
-.new-car {
+.car-form {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border: 1px solid #ccc;
-  padding: 20px;
-  margin: 20px 0;
+  border: 1px solid #1e1e1e;
+  padding: 25px;
+  margin: 0;
   border-radius: 8px;
-  box-shadow: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 420px;
   text-align: center;
+  background: #1e1e1e;
+
+}
+
+.close-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: #1e1e1e;
+  color: #333;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .form-section {

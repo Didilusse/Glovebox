@@ -3,18 +3,27 @@
     <Toast />
 
     <div class="main-container">
-      <NewCar
-        v-if="isNewCarVisible"
-        :api-base="API_BASE"
-        @created="handleCarCreated"
-      />
       <CarList
         :inventory="cars"
-        @add="handleShowNewCar"
+        @add="handleShowCarForm"
         @delete="handleDeleteCar"
         @view="handleViewCar"
         class="car-list-section"
       />
+
+      <transition name="fade">
+        <div
+          v-if="isCarFormVisible"
+          class="popup-overlay"
+          @click.self="handleCloseCarForm"
+        >
+          <CarForm
+            :api-base="API_BASE"
+            @created="handleCarCreated"
+            @close="handleCloseCarForm"
+          />
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -23,14 +32,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import CarList from '../components/CarList.vue'
-import NewCar from '../components/NewCar.vue'
+import CarForm from '../components/CarForm.vue'
 
 import Toast, { showToast } from '../components/Toast.vue'
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
 const router = useRouter()
 const cars = ref([])
-const isNewCarVisible = ref(false)
+const isCarFormVisible = ref(false)
 
 onMounted(async () => {
   await handleFetchCars()
@@ -39,8 +48,12 @@ function handleViewCar(carId) {
   router.push(`/car/${carId}`)
 }
 
-function handleShowNewCar() {
-  isNewCarVisible.value = true
+function handleShowCarForm() {
+  isCarFormVisible.value = true
+}
+
+function handleCloseCarForm() {
+  isCarFormVisible.value = false
 }
 
 async function handleFetchCars() {
@@ -55,7 +68,7 @@ async function handleFetchCars() {
 
 function handleCarCreated(car) {
   cars.value = [...cars.value, car]
-  isNewCarVisible.value = false
+  handleCloseCarForm()
 }
 
 
@@ -87,6 +100,17 @@ async function handleDeleteCar(carId) {
   margin-top: clamp(40px, 8vh, 100px);
 }
 
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 72px 24px 24px;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+}
+
 .car-list-section {
   width: 100%;
   max-width: 420px;
@@ -95,9 +119,14 @@ async function handleDeleteCar(carId) {
   display: block;
 }
 
-.garage-container {
-  width: 100%;
-  max-width: 420px;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 </style>
