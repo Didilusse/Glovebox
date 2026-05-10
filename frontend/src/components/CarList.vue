@@ -1,7 +1,7 @@
 <template>
   <div class="garage-container">
     <h2 class="title">Garage</h2>
-    
+
     <div v-for="car in inventory" :key="car._id" class="car-card">
       <div class="car-info-main">
         {{ car.make }} {{ car.model }}
@@ -12,16 +12,14 @@
       <div class="car-stats">
        Mileage: {{ car.mileage !== null ? car.mileage + ' miles' : 'N/A' }}
       </div>
-      <button class="view" @click="() => $emit('view', car._id)">View</button>
-      <button class="delete" @click="() => $emit('delete', car._id)">Delete</button>
+      <button class="view" @click="handleView(car._id)">View</button>
+      <button class="delete" @click="handleDelete(car._id)">Delete</button>
     </div>
 
-    <!-- Add car card -->
-    <div @click="emit('add')" class="add-car-card">
+    <button type="button" @click="handleAdd" class="add-car-card">
       <h2>Add a new car</h2>
-    </div>
+    </button>
   </div>
-  
 </template>
 
 <script setup>
@@ -30,6 +28,18 @@ const emit = defineEmits(['view', 'delete', 'add'])
 defineProps({
   inventory: Array
 })
+
+function handleView(carId) {
+  emit('view', carId)
+}
+
+function handleDelete(carId) {
+  emit('delete', carId)
+}
+
+function handleAdd() {
+  emit('add')
+}
 </script>
 
 <style scoped>
@@ -80,6 +90,7 @@ defineProps({
   }
 
   .add-car-card {
+    appearance: none;
     border: 1px dashed #ccc;
     padding: 15px;
     margin: 10px 0;
@@ -90,6 +101,8 @@ defineProps({
     text-align: center; 
     font-weight: bold;
     cursor: pointer;
+    background: transparent;
+    color: inherit;
   }
 
   .car-info-main {

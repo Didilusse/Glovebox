@@ -3,17 +3,25 @@
     <h2>Add a Car</h2>
 
     <form class="form-section" @submit.prevent="handleCreateCar">
-      <div>Enter Car Make:</div>
-      <input v-model="make" placeholder="Toyota" />
+      <label>
+        <span>Enter Car Make:</span>
+        <input v-model.trim="make" placeholder="Toyota" />
+      </label>
 
-      <div>Enter Car Model:</div>
-      <input v-model="model" placeholder="Camry" />
+      <label>
+        <span>Enter Car Model:</span>
+        <input v-model.trim="model" placeholder="Camry" />
+      </label>
 
-      <div>Enter Car Year:</div>
-      <input v-model="year" placeholder="2020" />
+      <label>
+        <span>Enter Car Year:</span>
+        <input v-model="year" type="number" inputmode="numeric" min="1900" max="9999" placeholder="2020" />
+      </label>
 
-      <div>Enter Car Mileage:</div>
-      <input v-model="mileage" placeholder="50000" />
+      <label>
+        <span>Enter Car Mileage:</span>
+        <input v-model="mileage" type="number" inputmode="numeric" min="0" placeholder="50000" />
+      </label>
 
       <button type="submit">Create Car</button>
     </form>
@@ -38,14 +46,17 @@ const model = ref('')
 const year = ref('')
 const mileage = ref('')
 
+const yearNumber = computed(() => Number(year.value))
+const mileageNumber = computed(() => Number(mileage.value))
+
 const isFormValid = computed(() => {
-  return make.value.trim() !== '' &&
-    model.value.trim() !== '' &&
-    year.value.toString().length === 4 &&
-    year.value > 0 &&
-    mileage.value !== null &&
-    mileage.value.toString().trim() !== '' &&
-    mileage.value >= 0
+  return make.value.length > 0 &&
+    model.value.length > 0 &&
+    Number.isInteger(yearNumber.value) &&
+    yearNumber.value >= 1900 &&
+    yearNumber.value <= 9999 &&
+    Number.isFinite(mileageNumber.value) &&
+    mileageNumber.value >= 0
 })
 
 async function handleCreateCar() {
@@ -55,10 +66,10 @@ async function handleCreateCar() {
   }
 
   const payload = {
-    make: make.value,
-    model: model.value,
-    year: year.value,
-    mileage: mileage.value
+    make: make.value.trim(),
+    model: model.value.trim(),
+    year: yearNumber.value,
+    mileage: mileageNumber.value
   }
 
   const response = await fetch(`${props.apiBase}/cars/`, {
@@ -111,9 +122,20 @@ async function handleCreateCar() {
   width: 100%;
 }
 
+.form-section label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
 .form-section input,
 .form-section button {
   width: 320px;
   max-width: 100%;
+}
+
+.form-section button {
+  cursor: pointer;
 }
 </style>

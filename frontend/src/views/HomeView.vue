@@ -53,8 +53,8 @@ async function handleFetchCars() {
   cars.value = data
 }
 
-async function handleCarCreated(car) {
-  await handleFetchCars()
+function handleCarCreated(car) {
+  cars.value = [...cars.value, car]
   isNewCarVisible.value = false
 }
 
@@ -67,10 +67,7 @@ async function handleDeleteCar(carId) {
     showToast('Failed to delete car', 'error')
     throw new Error('Failed to delete car')
   }
-  // Remove the deleted car from the list
-  cars.value = cars.value.filter(car => car._id !== carId)
-  console.log(`Car with ID ${carId} deleted successfully`)
-  // Refresh the car list
+  cars.value = cars.value.filter(existingCar => existingCar._id !== carId)
   showToast('Car deleted successfully', 'success')
 }
 </script>
@@ -83,24 +80,24 @@ async function handleDeleteCar(carId) {
 }
 
 .main-container {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 32px;
-align-items: center;
-margin-top: clamp(40px, 8vh, 100px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+  margin-top: clamp(40px, 8vh, 100px);
 }
 
 .car-list-section {
-width: 100%;
-max-width: 420px;
-justify-self: center;
-align-self: center;
-display: block;
+  width: 100%;
+  max-width: 420px;
+  justify-self: center;
+  align-self: center;
+  display: block;
 }
 
 .garage-container {
-width: 100%;
-max-width: 420px;
+  width: 100%;
+  max-width: 420px;
 }
 
 </style>
