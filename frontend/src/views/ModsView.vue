@@ -1,20 +1,8 @@
 <template>
 
   <NavBar />
-  
-  <div class="car-detail">
-    <h1>{{ carMake }}</h1>
-    <p><strong>Model:</strong> {{ model }}</p>
-    <p><strong>Year:</strong> {{ year }}</p>
-    <p><strong>Mileage:</strong> {{ mileage }}</p>
-    <p><strong>Initial Mileage:</strong> {{ initial_mileage }}</p>
-    <p><strong>VIN:</strong> {{ vin }}</p>
-    <p><strong>License Plate:</strong> {{ license_plate }}</p>
-    <p><strong>Fuel Type:</strong> {{ fuel_type }}</p>
-    <p><strong>Purchase Date:</strong> {{ purchase_date }}</p>
-    <p><strong>Purchase Price:</strong> {{ purchase_price }}</p>
-  </div>
   <button @click="handleBack">Back</button>
+  Mods
 </template>
 
 <script setup>
@@ -35,16 +23,6 @@ const carMake = computed(() => {
   return `${car.value.make ?? ''} ${car.value.model ?? ''}`.trim() || 'Car details'
 })
 
-const model = computed(() => car.value?.model ?? '')
-const year = computed(() => car.value?.year ?? '')
-const mileage = computed(() => car.value?.mileage ?? '')
-const initial_mileage = computed(() => car.value?.initial_mileage ?? '')
-const vin = computed(() => car.value?.vin ?? '')
-const license_plate = computed(() => car.value?.license_plate ?? '')
-const fuel_type = computed(() => car.value?.fuel_type ?? '')
-const purchase_date = computed(() => car.value?.purchase_date ?? '')
-const purchase_price = computed(() => car.value?.purchase_price ?? '')
-
 onMounted(() => {
   handleFetchCar()
 })
@@ -63,6 +41,7 @@ async function handleFetchCar() {
 function handleBack() {
   window.history.back()
 }
+
 
 </script>
 
