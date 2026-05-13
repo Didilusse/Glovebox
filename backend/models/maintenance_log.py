@@ -12,10 +12,10 @@ class DoneBy(str, Enum):
 class MaintenanceLog(Document):
     car_id: PydanticObjectId
     date_of_service: date
-    done_by: DoneBy
+    done_by: DoneBy = DoneBy.shop
     mileage: int
     cost: float
-    work_done: str
+    work_done: str = "Maintenance"
     notes: Optional[str] = None
     interval_miles: int | None = 5000
     interval_months: int | None = 6

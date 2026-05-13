@@ -1,45 +1,35 @@
 <template>
   <div class="garage-container">
-    <h2 class="title">Garage</h2>
+    <h2 class="title">Maintenance List</h2>
 
-    <div v-for="car in inventory" :key="car._id" class="car-card">
-      <div class="car-info-main">
-        {{ car.make }} {{ car.model }}
-      </div>
-      <div class="car-stats">
-        Year: {{ car.year || 'N/A' }}
-      </div>
-      <div class="car-stats">
-       Mileage: {{ car.mileage !== null ? car.mileage + ' miles' : 'N/A' }}
-      </div>
-      <button class="view" @click="handleView(car._id)">View</button>
-      <button class="delete" @click="handleDelete(car._id)">Delete</button>
+    <div v-if="!maintenances.length" class="empty-state">
+      No maintenance logs yet.
     </div>
 
-    <button type="button" @click="handleAdd" class="add-car-card">
-      <h2>Add a new car</h2>
+    <div v-for="log in maintenances" :key="log._id" class="car-card">
+      <div class="car-info-main">
+        {{ log.work_done || 'Maintenance' }}
+      </div>
+      <div class="car-stats">Date: {{ log.date_of_service || 'N/A' }}</div>
+      <div class="car-stats">Mileage: {{ log.mileage ?? 'N/A' }}</div>
+      <div class="car-stats">Cost: {{ log.cost ?? 'N/A' }}</div>
+      <div class="car-stats">Done by: {{ log.done_by || 'N/A' }}</div>
+      <div class="car-stats" v-if="log.notes">Notes: {{ log.notes }}</div>
+    </div>
+
+    <button type="button" class="add-car-card">
+      <h2>Total logs: {{ maintenances.length }}</h2>
     </button>
   </div>
 </template>
 
 <script setup>
-const emit = defineEmits(['view', 'delete', 'add'])
-
 defineProps({
-  inventory: Array
+  maintenances: {
+    type: Array,
+    default: () => []
+  }
 })
-
-function handleView(carId) {
-  emit('view', carId)
-}
-
-function handleDelete(carId) {
-  emit('delete', carId)
-}
-
-function handleAdd() {
-  emit('add')
-}
 </script>
 
 <style scoped>
@@ -57,25 +47,6 @@ function handleAdd() {
     font-weight: bold;
     text-align: center;
     margin-bottom: 20px;
-  }
-  .delete {
-    background-color: #dc3545;
-    color: white;
-    border: 1px solid #dc3545;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-left: 10px;
-  }
-
-  .view {
-    background-color: #007bff;
-    color: white;
-    border: 1px solid #007bff;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-left: 10px;
   }
 
   .car-card {
@@ -114,5 +85,10 @@ function handleAdd() {
   .car-stats {
     font-size: 0.9rem;
     color: #666;
+  }
+
+  .empty-state {
+    color: #666;
+    margin-bottom: 12px;
   }
 </style>

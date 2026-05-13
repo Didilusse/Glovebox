@@ -1,41 +1,42 @@
 <template>
 
   <NavBar />
+  <Toast />
+  <MaintenanceList :maintenances="maintenances" />
   <button @click="handleBack">Back</button>
   Maintenance
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Toast, { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
+import MaintenanceList from '../components/MaintenanceList.vue'
 const route = useRoute()
-const car = ref(null)
+const maintenances = ref([])
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
 
-const carMake = computed(() => {
-  if (!car.value) {
-    return 'Loading car...'
-  }
-  
-  return `${car.value.make ?? ''} ${car.value.model ?? ''}`.trim() || 'Car details'
-})
+
 
 onMounted(() => {
-  handleFetchCar()
+  handleFetchMaintenances()
 })
 
-async function handleFetchCar() {
-  const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/`)
-  if (!response.ok) {
-    showToast('Failed to fetch car', 'error')
-    throw new Error('Failed to fetch car')
+async function handleFetchMaintenances() {
+  try {
+    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/`)
+    if (!response.ok) {
+      showToast('Failed to fetch maintenance logs', 'error')
+      return
+    }
+
+    const data = await response.json()
+    maintenances.value = Array.isArray(data) ? data : []
+  } catch {
+    showToast('Failed to fetch maintenance logs', 'error')
   }
-  const data = await response.json()
-  car.value = data
-  showToast('Car fetched successfully', 'success')
 }
 
 function handleBack() {
