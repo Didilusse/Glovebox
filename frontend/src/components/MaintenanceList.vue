@@ -9,6 +9,7 @@
       :key="log._id"
       :log="log"
       @delete="$emit('delete', $event)"
+      @edit-reminder="$emit('edit-reminder', $event)"
     />
   </section>
 </template>

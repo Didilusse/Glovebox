@@ -35,6 +35,22 @@
             </select>
             <span v-if="isSubmitted && !done_by" class="error-text">Who performed the work is required.</span>
           </div>
+
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" v-model="category" :class="{'input-error': isSubmitted && !category}">
+              <option value="engine">Engine</option>
+              <option value="suspension">Suspension</option>
+              <option value="exterior">Exterior</option>
+              <option value="interior">Interior</option>
+              <option value="wheels">Wheels</option>
+              <option value="brakes">Brakes</option>
+              <option value="exhaust">Exhaust</option>
+              <option value="fluids">Fluids</option>
+              <option value="other">Other</option>
+            </select>
+            <span v-if="isSubmitted && !category" class="error-text">Category is required.</span>
+          </div>
         </div>
 
         <div class="form-row">
@@ -50,6 +66,28 @@
             <label for="notes">Notes</label>
             <textarea id="notes" rows="4" v-model="notes" :class="{'input-error': isSubmitted && !notes.trim()}"></textarea>
             <span v-if="isSubmitted && !notes.trim()" class="error-text">Notes are required.</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>
+              <input type="checkbox" v-model="createReminder" /> Add reminder
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row" v-if="createReminder">
+          <div class="field">
+            <label for="interval_months">Interval (months)</label>
+            <input id="interval_months" type="number" v-model.number="interval_months" min="0" />
+            <span v-if="isSubmitted && createReminder && (interval_months === null || interval_months === '')" class="error-text">Provide months or miles.</span>
+          </div>
+
+          <div class="field">
+            <label for="interval_miles">Interval (miles)</label>
+            <input id="interval_miles" type="number" v-model.number="interval_miles" min="0" />
+            <span v-if="isSubmitted && createReminder && (interval_miles === null || interval_miles === '')" class="error-text">Provide months or miles.</span>
           </div>
         </div>
 
@@ -71,8 +109,13 @@ const date = ref('')
 const mileage = ref(null)
 const cost = ref(null)
 const done_by = ref('self')
+const category = ref('other')
 const work_done = ref('')
 const notes = ref('')
+
+const createReminder = ref(false)
+const interval_months = ref(null)
+const interval_miles = ref(null)
 
 const isSubmitted = ref(false);
 
@@ -84,10 +127,14 @@ function handleCreateMaintenance() {
   const hasCost = !(cost.value === null || cost.value === '')
   const hasWork = Boolean(work_done.value && work_done.value.trim())
   const hasDoneBy = Boolean(done_by.value)
+  const hasCategory = Boolean(category.value)
   const hasDate = Boolean(date.value)
   const hasNotes = Boolean(notes.value && notes.value.trim())
 
-  if (!hasMileage || !hasCost || !hasWork || !hasDoneBy || !hasDate || !hasNotes) {
+  // If createReminder true, require at least one interval value
+  const hasInterval = !createReminder.value || ( (interval_months.value !== null && interval_months.value !== '') || (interval_miles.value !== null && interval_miles.value !== '') )
+
+  if (!hasMileage || !hasCost || !hasWork || !hasDoneBy || !hasCategory || !hasDate || !hasNotes || !hasInterval) {
     return
   }
 
@@ -96,6 +143,9 @@ function handleCreateMaintenance() {
     mileage: Number(mileage.value),
     cost: Number(cost.value),
     done_by: done_by.value,
+    category: category.value,
+    interval_months: createReminder.value ? (interval_months.value !== null && interval_months.value !== '' ? Number(interval_months.value) : null) : null,
+    interval_miles: createReminder.value ? (interval_miles.value !== null && interval_miles.value !== '' ? Number(interval_miles.value) : null) : null,
     work_done: work_done.value.trim(),
     notes: notes.value.trim()
   }

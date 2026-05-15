@@ -10,11 +10,13 @@
         <p class="meta">Date: {{ log.date_of_service || 'N/A' }}</p>
         <p class="meta">Mileage: {{ log.mileage ?? 'N/A' }}</p>
         <p class="meta">Cost: {{ log.cost ?? 'N/A' }}</p>
+        <p v-if="log.reminder_date || log.reminder_mileage" class="meta">Reminder: {{ log.reminder_date ? log.reminder_date : '' }} {{ log.reminder_mileage ? `(at ${log.reminder_mileage} miles)` : '' }}</p>
         <p v-if="log.notes" class="meta">Notes: {{ log.notes }}</p>
       </div>
 
       <div class="actions">
         <button class="delete" @click="$emit('delete', log._id)">Delete</button>
+        <button class="secondary" @click="$emit('edit-reminder', log)">Edit Reminder</button>
       </div>
     </div>
   </article>

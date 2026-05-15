@@ -1,5 +1,5 @@
 from beanie import Document, PydanticObjectId
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, field_validator
 from typing import Optional
 from datetime import date
 from enum import Enum
@@ -39,6 +39,14 @@ class MaintenanceLog(Document):
         description="The calculated mileage when the next maintenance reminder should be sent."
     )
 
+    @field_validator("category", mode="before")
+    def _normalize_category_doc(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, str):
+            return v.lower()
+        return v
+
 
     class Settings:
         name = "maintenance_logs"
@@ -54,6 +62,14 @@ class MaintenanceLogCreate(BaseModel):
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
     interval_miles: int | None = 5000
     interval_months: int | None = 6
+    
+    @field_validator("category", mode="before")
+    def _normalize_category(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 
 class MaintenanceLogUpdate(BaseModel):
@@ -64,6 +80,14 @@ class MaintenanceLogUpdate(BaseModel):
     work_done: Optional[str] = Field(None, description="What work was done")
     category: Optional[Category] = Field(None, description="Category of the maintenance")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
+
+    @field_validator("category", mode="before")
+    def _normalize_category_update(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 
 class MaintenanceReminder(BaseModel):

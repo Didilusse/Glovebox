@@ -89,6 +89,36 @@ async function handleDeleteMaintenance(logId) {
   }
 }
 
+async function handleEditReminder(log) {
+  try {
+    const months = window.prompt('Enter interval months (leave blank to skip)', log.interval_months ?? '')
+    const miles = window.prompt('Enter interval miles (leave blank to skip)', log.interval_miles ?? '')
+
+    const body = {}
+    if (months !== null && months !== '') body.interval_months = Number(months)
+    if (miles !== null && miles !== '') body.interval_miles = Number(miles)
+
+    if (!Object.keys(body).length) return
+
+    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/${log._id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+
+    if (!response.ok) {
+      showToast('Failed to update reminder', 'error')
+      return
+    }
+
+    const updated = await response.json()
+    maintenances.value = maintenances.value.map(m => (m._id === updated._id ? updated : m))
+    showToast('Reminder updated', 'success')
+  } catch (err) {
+    showToast('Failed to update reminder', 'error')
+  }
+}
+
 function handleBack() {
   window.history.back()
 }
