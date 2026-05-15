@@ -12,38 +12,44 @@
           <div class="field">
             <label for="date">Date</label>
             <input id="date" type="date" v-model="date" />
+            <span v-if="isSubmitted && !date" class="error-text">Date is required.</span>
           </div>
 
           <div class="field">
             <label for="mileage">Mileage</label>
-            <input id="mileage" type="number" v-model.number="mileage" />
+            <input id="mileage" type="number" v-model.number="mileage" :class="{'input-error': isSubmitted && (mileage === null || mileage === '')}" />
+            <span v-if="isSubmitted && (mileage === null || mileage === '')" class="error-text">Mileage is required.</span>
           </div>
 
           <div class="field">
             <label for="cost">Cost</label>
-            <input id="cost" type="number" step="0.01" v-model.number="cost" />
+            <input id="cost" type="number" step="0.01" v-model.number="cost" :class="{'input-error': isSubmitted && (cost === null || cost === '')}" />
+            <span v-if="isSubmitted && (cost === null || cost === '')" class="error-text">Cost is required.</span>
           </div>
 
           <div class="field">
             <label for="done_by">Done by</label>
-            <select id="done_by" v-model="done_by">
+            <select id="done_by" v-model="done_by" :class="{'input-error': isSubmitted && !done_by}">
               <option value="self">Self</option>
               <option value="shop">Shop</option>
             </select>
+            <span v-if="isSubmitted && !done_by" class="error-text">Who performed the work is required.</span>
           </div>
         </div>
 
         <div class="form-row">
           <div class="field" style="flex:1 1 100%">
             <label for="work_done">Work done</label>
-            <input id="work_done" v-model="work_done" />
+            <input id="work_done" v-model="work_done" :class="{'input-error': isSubmitted && !work_done.trim()}" />
+            <span v-if="isSubmitted && !work_done.trim()" class="error-text">Work done is required.</span>
           </div>
         </div>
 
         <div class="form-row">
           <div class="field" style="flex:1 1 100%">
             <label for="notes">Notes</label>
-            <textarea id="notes" rows="4" v-model="notes"></textarea>
+            <textarea id="notes" rows="4" v-model="notes" :class="{'input-error': isSubmitted && !notes.trim()}"></textarea>
+            <span v-if="isSubmitted && !notes.trim()" class="error-text">Notes are required.</span>
           </div>
         </div>
 
@@ -68,21 +74,30 @@ const done_by = ref('self')
 const work_done = ref('')
 const notes = ref('')
 
+const isSubmitted = ref(false);
+
+
 function handleCreateMaintenance() {
-  if (mileage.value === null || mileage.value === '' || cost.value === null || cost.value === '' || !work_done.value.trim()) {
+  isSubmitted.value = true;
+
+  const hasMileage = !(mileage.value === null || mileage.value === '')
+  const hasCost = !(cost.value === null || cost.value === '')
+  const hasWork = Boolean(work_done.value && work_done.value.trim())
+  const hasDoneBy = Boolean(done_by.value)
+  const hasDate = Boolean(date.value)
+  const hasNotes = Boolean(notes.value && notes.value.trim())
+
+  if (!hasMileage || !hasCost || !hasWork || !hasDoneBy || !hasDate || !hasNotes) {
     return
   }
 
   const payload = {
+    date_of_service: date.value,
     mileage: Number(mileage.value),
     cost: Number(cost.value),
     done_by: done_by.value,
     work_done: work_done.value.trim(),
-    notes: notes.value.trim() || null
-  }
-
-  if (date.value) {
-    payload.date_of_service = date.value
+    notes: notes.value.trim()
   }
 
   emit('created', payload)
@@ -189,5 +204,15 @@ function handleCreateMaintenance() {
   border-radius: 8px;
   cursor: pointer;
   color: #cbd5e1;
+}
+
+.error-text {
+  color: red;
+  font-size: 0.875rem;
+  display: block;
+  margin-top: 4px;
+}
+.input-error {
+  border-color: red;
 }
 </style>
