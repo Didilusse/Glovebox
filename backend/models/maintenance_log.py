@@ -8,6 +8,16 @@ class DoneBy(str, Enum):
     self_ = "self"
     shop = "shop"
 
+class Category(str, Enum):
+    engine = "engine"
+    suspension = "suspension"
+    exterior = "exterior"
+    interior = "interior"
+    wheels = "wheels"
+    brakes = "brakes"
+    exhaust = "exhaust"
+    fluids = "fluids" 
+    other = "other"
 
 class MaintenanceLog(Document):
     car_id: PydanticObjectId
@@ -16,6 +26,7 @@ class MaintenanceLog(Document):
     mileage: int
     cost: float
     work_done: str = "Maintenance"
+    category: Category = Category.other
     notes: Optional[str] = None
     interval_miles: int | None = 5000
     interval_months: int | None = 6
@@ -39,6 +50,7 @@ class MaintenanceLogCreate(BaseModel):
     mileage: int = Field(..., description="Odometer reading at the time of service")
     cost: float = Field(..., description="The cost of the service")
     work_done: str = Field(..., description="What work was done")
+    category: Category = Field(Category.other, description="Category of the maintenance")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
     interval_miles: int | None = 5000
     interval_months: int | None = 6
@@ -50,6 +62,7 @@ class MaintenanceLogUpdate(BaseModel):
     mileage: Optional[int] = Field(None, description="Odometer reading at the time of service")
     cost: Optional[float] = Field(None, description="The cost of the service")
     work_done: Optional[str] = Field(None, description="What work was done")
+    category: Optional[Category] = Field(None, description="Category of the maintenance")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
 
 
