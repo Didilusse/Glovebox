@@ -13,6 +13,22 @@
     <p><strong>Fuel Type:</strong> {{ fuel_type }}</p>
     <p><strong>Purchase Date:</strong> {{ purchase_date }}</p>
     <p><strong>Purchase Price:</strong> {{ purchase_price }}</p>
+
+    <div class="car-stats" v-if="stats">
+      <h2>Stats</h2>
+      <p><strong>Log Count:</strong> {{ stats.log_count }}</p>
+      <p><strong>Avg Cost per Service:</strong> {{ stats.avg_cost_per_service }}</p>
+      <p><strong>Total Spent:</strong> {{ stats.total_spent }}</p>
+      <p><strong>Max Cost:</strong> {{ stats.max_cost }}</p>
+      <p><strong>Distance Travelled:</strong> {{ stats.distance_travelled ?? 'N/A' }}</p>
+
+      <div v-if="stats.cost_by_done_by">
+        <h3>Cost by Done By</h3>
+        <div v-for="(val, key) in stats.cost_by_done_by" :key="key">
+          <p><strong>{{ key }}:</strong> Total {{ val.total_spent }} — Count {{ val.count }}</p>
+        </div>
+      </div>
+    </div>
   </div>
   <button @click="handleBack">Back</button>
 </template>
@@ -24,6 +40,7 @@ import Toast, { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
 const route = useRoute()
 const car = ref(null)
+const stats = ref(null)
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
 
@@ -47,6 +64,7 @@ const purchase_price = computed(() => car.value?.purchase_price ?? '')
 
 onMounted(() => {
   handleFetchCar()
+  handleFetchStats()
 })
 
 async function handleFetchCar() {
@@ -60,6 +78,17 @@ async function handleFetchCar() {
   showToast('Car fetched successfully', 'success')
 }
 
+async function handleFetchStats() {
+  const response = await fetch(`${API_BASE}/cars/${route.params.carId}/stats/`)
+  if (!response.ok) {
+    showToast('Failed to fetch car stats', 'error')
+    throw new Error('Failed to fetch car stats')
+  }
+  const data = await response.json()
+  stats.value = data
+
+  showToast('Car stats fetched successfully', 'success')
+}
 function handleBack() {
   window.history.back()
 }
