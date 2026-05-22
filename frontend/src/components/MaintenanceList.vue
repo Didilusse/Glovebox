@@ -9,7 +9,7 @@
       :key="log._id"
       :log="log"
       @delete="$emit('delete', $event)"
-      @edit-reminder="$emit('edit-reminder', $event)"
+      @edit="$emit('edit', $event)"
     />
   </section>
 </template>
@@ -17,7 +17,7 @@
 <script setup>
 import MaintenanceLogCard from './MaintenanceLogCard.vue'
 
-defineEmits(['delete'])
+defineEmits(['delete', 'edit'])
 
 defineProps({
   maintenances: {

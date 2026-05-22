@@ -2,12 +2,12 @@
   <div class="overlay" @click.self="$emit('close')">
     <section class="panel">
       <div class="panel-header">
-        <h2>Add maintenance</h2>
+        <h2>{{ isEditMode ? 'Edit maintenance' : 'Add maintenance' }}</h2>
 
         <button type="button" class="close-button" @click="$emit('close')">Close</button>
       </div>
 
-      <form class="form-section" @submit.prevent="handleCreateMaintenance">
+      <form class="form-section" @submit.prevent="handleSubmit">
         <div class="form-row">
           <div class="field">
             <label for="date">Date</label>
@@ -17,19 +17,19 @@
 
           <div class="field">
             <label for="mileage">Mileage</label>
-            <input id="mileage" type="number" v-model.number="mileage" :class="{'input-error': isSubmitted && (mileage === null || mileage === '')}" />
+            <input id="mileage" type="number" v-model.number="mileage" :class="{ 'input-error': isSubmitted && (mileage === null || mileage === '') }" />
             <span v-if="isSubmitted && (mileage === null || mileage === '')" class="error-text">Mileage is required.</span>
           </div>
 
           <div class="field">
             <label for="cost">Cost</label>
-            <input id="cost" type="number" step="0.01" v-model.number="cost" :class="{'input-error': isSubmitted && (cost === null || cost === '')}" />
+            <input id="cost" type="number" step="0.01" v-model.number="cost" :class="{ 'input-error': isSubmitted && (cost === null || cost === '') }" />
             <span v-if="isSubmitted && (cost === null || cost === '')" class="error-text">Cost is required.</span>
           </div>
 
           <div class="field">
             <label for="done_by">Done by</label>
-            <select id="done_by" v-model="done_by" :class="{'input-error': isSubmitted && !done_by}">
+            <select id="done_by" v-model="done_by" :class="{ 'input-error': isSubmitted && !done_by }">
               <option value="self">Self</option>
               <option value="shop">Shop</option>
             </select>
@@ -38,7 +38,7 @@
 
           <div class="field">
             <label for="category">Category</label>
-            <select id="category" v-model="category" :class="{'input-error': isSubmitted && !category}">
+            <select id="category" v-model="category" :class="{ 'input-error': isSubmitted && !category }">
               <option value="engine">Engine</option>
               <option value="suspension">Suspension</option>
               <option value="exterior">Exterior</option>
@@ -56,7 +56,7 @@
         <div class="form-row">
           <div class="field" style="flex:1 1 100%">
             <label for="work_done">Work done</label>
-            <input id="work_done" v-model="work_done" :class="{'input-error': isSubmitted && !work_done.trim()}" />
+            <input id="work_done" v-model="work_done" :class="{ 'input-error': isSubmitted && !work_done.trim() }" />
             <span v-if="isSubmitted && !work_done.trim()" class="error-text">Work done is required.</span>
           </div>
         </div>
@@ -64,8 +64,8 @@
         <div class="form-row">
           <div class="field" style="flex:1 1 100%">
             <label for="notes">Notes</label>
-            <textarea id="notes" rows="4" v-model="notes" :class="{'input-error': isSubmitted && !notes.trim()}"></textarea>
-            <span v-if="isSubmitted && !notes.trim()" class="error-text">Notes are required.</span>
+            <textarea id="notes" rows="4" v-model="notes" :class="{ 'input-error': isSubmitted && !notes.trim() }"></textarea>
+            <span v-if="isSubmitted && !notes.trim() && !isEditMode" class="error-text">Notes are required.</span>
           </div>
         </div>
 
@@ -93,7 +93,7 @@
 
         <div class="actions">
           <button type="button" class="secondary" @click="$emit('close')">Cancel</button>
-          <button type="submit" class="primary">Save</button>
+          <button type="submit" class="primary">{{ isEditMode ? 'Save changes' : 'Save' }}</button>
         </div>
       </form>
     </section>
@@ -101,27 +101,73 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-const emit = defineEmits(['close', 'created'])
+const props = defineProps({
+  mode: {
+    type: String,
+    default: 'create'
+  },
+  maintenance: {
+    type: Object,
+    default: null
+  }
+})
 
-const date = ref(new Date().toISOString().slice(0, 10))
+const emit = defineEmits(['close', 'created', 'updated'])
+
+const isEditMode = computed(() => props.mode === 'edit')
+
+const date = ref('')
 const mileage = ref(null)
 const cost = ref(null)
 const done_by = ref('self')
 const category = ref('other')
 const work_done = ref('')
 const notes = ref('')
-
 const createReminder = ref(false)
 const interval_months = ref(null)
 const interval_miles = ref(null)
+const isSubmitted = ref(false)
 
-const isSubmitted = ref(false);
+function getInitialState(maintenance) {
+  return {
+    date: maintenance?.date_of_service ?? new Date().toISOString().slice(0, 10),
+    mileage: maintenance?.mileage ?? null,
+    cost: maintenance?.cost ?? null,
+    done_by: maintenance?.done_by ?? 'self',
+    category: maintenance?.category ?? 'other',
+    work_done: maintenance?.work_done ?? '',
+    notes: maintenance?.notes ?? '',
+    createReminder:
+      (maintenance?.interval_months !== null && maintenance?.interval_months !== undefined) ||
+      (maintenance?.interval_miles !== null && maintenance?.interval_miles !== undefined),
+    interval_months: maintenance?.interval_months ?? null,
+    interval_miles: maintenance?.interval_miles ?? null
+  }
+}
 
+watch(
+  () => props.maintenance,
+  (maintenance) => {
+    const initialState = getInitialState(maintenance)
+    date.value = initialState.date
+    mileage.value = initialState.mileage
+    cost.value = initialState.cost
+    done_by.value = initialState.done_by
+    category.value = initialState.category
+    work_done.value = initialState.work_done
+    notes.value = initialState.notes
+    createReminder.value = initialState.createReminder
+    interval_months.value = initialState.interval_months
+    interval_miles.value = initialState.interval_miles
+    isSubmitted.value = false
+  },
+  { immediate: true }
+)
 
-function handleCreateMaintenance() {
-  isSubmitted.value = true;
+function handleSubmit() {
+  isSubmitted.value = true
 
   const hasMileage = !(mileage.value === null || mileage.value === '')
   const hasCost = !(cost.value === null || cost.value === '')
@@ -129,10 +175,8 @@ function handleCreateMaintenance() {
   const hasDoneBy = Boolean(done_by.value)
   const hasCategory = Boolean(category.value)
   const hasDate = Boolean(date.value)
-  const hasNotes = Boolean(notes.value && notes.value.trim())
-
-  // If createReminder true, require at least one interval value
-  const hasInterval = !createReminder.value || ( (interval_months.value !== null && interval_months.value !== '') || (interval_miles.value !== null && interval_miles.value !== '') )
+  const hasNotes = isEditMode.value ? true : Boolean(notes.value && notes.value.trim())
+  const hasInterval = !createReminder.value || ((interval_months.value !== null && interval_months.value !== '') || (interval_miles.value !== null && interval_miles.value !== ''))
 
   if (!hasMileage || !hasCost || !hasWork || !hasDoneBy || !hasCategory || !hasDate || !hasNotes || !hasInterval) {
     return
@@ -150,8 +194,7 @@ function handleCreateMaintenance() {
     notes: notes.value.trim()
   }
 
-  emit('created', payload)
-  emit('close')
+  emit(isEditMode.value ? 'updated' : 'created', payload)
 }
 
 </script>

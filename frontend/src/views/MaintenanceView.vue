@@ -2,19 +2,23 @@
   <NavBar />
   <Toast />
   <main class="maintenance-page">
-    <MaintenanceHeader @add="isCreateOpen = true" />
-    <MaintenanceList :maintenances="maintenances" @delete="handleDeleteMaintenance" />
+    <MaintenanceHeader @add="openCreateMaintenance" />
+    <MaintenanceList :maintenances="maintenances" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
   </main>
 
   <MaintenanceForm
-    v-if="isCreateOpen"
-    @close="isCreateOpen = false"
+    v-if="isFormOpen"
+    :key="formKey"
+    :mode="formMode"
+    :maintenance="selectedMaintenance"
+    @close="closeMaintenanceForm"
     @created="handleCreateMaintenance"
+    @updated="handleUpdateMaintenance"
   />
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Toast, { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
@@ -23,9 +27,13 @@ import MaintenanceHeader from '../components/MaintenanceHeader.vue'
 import MaintenanceList from '../components/MaintenanceList.vue'
 const route = useRoute()
 const maintenances = ref([])
-const isCreateOpen = ref(false)
+const isFormOpen = ref(false)
+const selectedMaintenance = ref(null)
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+
+const formMode = computed(() => (selectedMaintenance.value ? 'edit' : 'create'))
+const formKey = computed(() => selectedMaintenance.value?._id ?? 'new')
 
 
 
@@ -66,8 +74,37 @@ async function handleCreateMaintenance(payload) {
     const newMaintenance = await response.json()
     maintenances.value = [newMaintenance, ...maintenances.value]
     showToast('Maintenance log created successfully', 'success')
+    closeMaintenanceForm()
   } catch {
     showToast('Failed to create maintenance log', 'error')
+  }
+}
+
+async function handleUpdateMaintenance(payload) {
+  if (!selectedMaintenance.value) {
+    return
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/${selectedMaintenance.value._id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      showToast('Failed to update maintenance log', 'error')
+      return
+    }
+
+    const updatedMaintenance = await response.json()
+    maintenances.value = maintenances.value.map(log => (log._id === updatedMaintenance._id ? updatedMaintenance : log))
+    showToast('Maintenance log updated successfully', 'success')
+    closeMaintenanceForm()
+  } catch {
+    showToast('Failed to update maintenance log', 'error')
   }
 }
 
@@ -89,34 +126,19 @@ async function handleDeleteMaintenance(logId) {
   }
 }
 
-async function handleEditReminder(log) {
-  try {
-    const months = window.prompt('Enter interval months (leave blank to skip)', log.interval_months ?? '')
-    const miles = window.prompt('Enter interval miles (leave blank to skip)', log.interval_miles ?? '')
+function openCreateMaintenance() {
+  selectedMaintenance.value = null
+  isFormOpen.value = true
+}
 
-    const body = {}
-    if (months !== null && months !== '') body.interval_months = Number(months)
-    if (miles !== null && miles !== '') body.interval_miles = Number(miles)
+function openEditMaintenance(log) {
+  selectedMaintenance.value = log
+  isFormOpen.value = true
+}
 
-    if (!Object.keys(body).length) return
-
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/${log._id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-
-    if (!response.ok) {
-      showToast('Failed to update reminder', 'error')
-      return
-    }
-
-    const updated = await response.json()
-    maintenances.value = maintenances.value.map(m => (m._id === updated._id ? updated : m))
-    showToast('Reminder updated', 'success')
-  } catch (err) {
-    showToast('Failed to update reminder', 'error')
-  }
+function closeMaintenanceForm() {
+  isFormOpen.value = false
+  selectedMaintenance.value = null
 }
 
 function handleBack() {

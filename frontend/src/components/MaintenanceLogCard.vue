@@ -16,14 +16,14 @@
 
       <div class="actions">
         <button class="delete" @click="$emit('delete', log._id)">Delete</button>
-        <button class="secondary" @click="$emit('edit-reminder', log)">Edit Reminder</button>
+        <button class="secondary" @click="$emit('edit', log)">Edit</button>
       </div>
     </div>
   </article>
 </template>
 
 <script setup>
-defineEmits(['delete'])
+defineEmits(['delete', 'edit'])
 
 defineProps({
   log: {
