@@ -29,8 +29,22 @@
         </div>
       </div>
     </div>
+    <div class="car-reminders" v-if="reminders && reminders.length">
+      <h2>Reminders</h2>
+      <ul>
+        <li v-for="r in reminders" :key="r.log_id" class="reminder-item">
+          <strong>{{ r.work_done }}</strong>
+          <div>Date: {{ r.date_of_service }}</div>
+          <div>Reminder date: {{ r.reminder_date ?? 'N/A' }}</div>
+          <div>Reminder mileage: {{ r.reminder_mileage ?? 'N/A' }}</div>
+          <div>Due: {{ r.is_due ? 'Yes' : 'No' }} {{ r.due_reason ? `(${r.due_reason})` : '' }}</div>
+          <div>
+            <button @click="handleEditReminder(r)">Edit Reminder</button>
+          </div>
+        </li>
+      </ul>
+    </div>
   </div>
-  <button @click="handleBack">Back</button>
 </template>
 
 <script setup>
@@ -43,6 +57,7 @@ const car = ref(null)
 const stats = ref(null)
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const reminders = ref([])
 
 const carMake = computed(() => {
   if (!car.value) {
@@ -65,6 +80,7 @@ const purchase_price = computed(() => car.value?.purchase_price ?? '')
 onMounted(() => {
   handleFetchCar()
   handleFetchStats()
+  handleFetchReminders()
 })
 
 async function handleFetchCar() {
@@ -76,6 +92,49 @@ async function handleFetchCar() {
   const data = await response.json()
   car.value = data
   showToast('Car fetched successfully', 'success')
+}
+
+async function handleFetchReminders() {
+  try {
+    const res = await fetch(`${API_BASE}/cars/${route.params.carId}/reminders/`)
+    if (!res.ok) {
+      reminders.value = []
+      return
+    }
+    const data = await res.json()
+    reminders.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    reminders.value = []
+  }
+}
+
+async function handleEditReminder(reminder) {
+  try {
+    const months = window.prompt('Enter interval months (leave blank to skip)', reminder.interval_months ?? '')
+    const miles = window.prompt('Enter interval miles (leave blank to skip)', reminder.interval_mileage ?? '')
+
+    const body = {}
+    if (months !== null && months !== '') body.interval_months = Number(months)
+    if (miles !== null && miles !== '') body.interval_miles = Number(miles)
+
+    if (!Object.keys(body).length) return
+
+    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/${reminder.log_id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+
+    if (!response.ok) {
+      showToast('Failed to update reminder', 'error')
+      return
+    }
+
+    showToast('Reminder updated', 'success')
+    await handleFetchReminders()
+  } catch (err) {
+    showToast('Failed to update reminder', 'error')
+  }
 }
 
 async function handleFetchStats() {

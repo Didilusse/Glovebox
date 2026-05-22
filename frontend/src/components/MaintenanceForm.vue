@@ -105,7 +105,7 @@ import { ref } from 'vue'
 
 const emit = defineEmits(['close', 'created'])
 
-const date = ref('')
+const date = ref(new Date().toISOString().slice(0, 10))
 const mileage = ref(null)
 const cost = ref(null)
 const done_by = ref('self')

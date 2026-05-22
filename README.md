@@ -24,10 +24,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Use the virtualenv interpreter when starting the API so Uvicorn loads the same packages you just installed.
+
 2. Run the API (from repo root):
 
 ```bash
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+.venv/bin/uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 3. Open the API docs: http://localhost:8000/docs

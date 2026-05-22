@@ -28,8 +28,8 @@ class MaintenanceLog(Document):
     work_done: str = "Maintenance"
     category: Category = Category.other
     notes: Optional[str] = None
-    interval_miles: int | None = 5000
-    interval_months: int | None = 6
+    interval_miles: int | None = None
+    interval_months: int | None = None
     reminder_date: Optional[date] = Field(
         None,
         description="The calculated date when the next maintenance reminder should be sent."
@@ -60,8 +60,8 @@ class MaintenanceLogCreate(BaseModel):
     work_done: str = Field(..., description="What work was done")
     category: Category = Field(Category.other, description="Category of the maintenance")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
-    interval_miles: int | None = 5000
-    interval_months: int | None = 6
+    interval_miles: int | None = None
+    interval_months: int | None = None
     
     @field_validator("category", mode="before")
     def _normalize_category(cls, v):
@@ -79,6 +79,8 @@ class MaintenanceLogUpdate(BaseModel):
     cost: Optional[float] = Field(None, description="The cost of the service")
     work_done: Optional[str] = Field(None, description="What work was done")
     category: Optional[Category] = Field(None, description="Category of the maintenance")
+    interval_miles: Optional[int] = Field(None, description="Interval in miles for next reminder")
+    interval_months: Optional[int] = Field(None, description="Interval in months for next reminder")
     notes: Optional[str] = Field(None, description="Additional details like parts or products used")
 
     @field_validator("category", mode="before")
