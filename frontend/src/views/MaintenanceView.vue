@@ -43,14 +43,21 @@ onMounted(() => {
 
 async function handleFetchMaintenances() {
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/`)
-    if (!response.ok) {
-      showToast('Failed to fetch maintenance logs', 'error')
-      return
+    const fetchedMaintenances = []
+    const pageSize = 100
+
+    while (true) {
+      const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/?skip=${fetchedMaintenances.length}&limit=${pageSize}`)
+      if (!response.ok) {
+        showToast('Failed to fetch maintenance logs', 'error')
+        return
+      }
+      const page = await response.json()
+      fetchedMaintenances.push(...page)
+      if (page.length < pageSize) break
     }
 
-    const data = await response.json()
-    maintenances.value = Array.isArray(data) ? data : []
+    maintenances.value = fetchedMaintenances
   } catch {
     showToast('Failed to fetch maintenance logs', 'error')
   }

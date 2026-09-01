@@ -11,8 +11,8 @@
     <p><strong>VIN:</strong> {{ vin }}</p>
     <p><strong>License Plate:</strong> {{ license_plate }}</p>
     <p><strong>Fuel Type:</strong> {{ fuel_type }}</p>
-    <p><strong>Purchase Date:</strong> {{ purchase_date }}</p>
-    <p><strong>Purchase Price:</strong> {{ purchase_price }}</p>
+    <p><strong>Purchase Date:</strong> {{ purchased_date }}</p>
+    <p><strong>Purchase Price:</strong> {{ purchased_price }}</p>
 
     <div class="car-stats" v-if="stats">
       <h2>Stats</h2>
@@ -74,8 +74,8 @@ const initial_mileage = computed(() => car.value?.initial_mileage ?? '')
 const vin = computed(() => car.value?.vin ?? '')
 const license_plate = computed(() => car.value?.license_plate ?? '')
 const fuel_type = computed(() => car.value?.fuel_type ?? '')
-const purchase_date = computed(() => car.value?.purchase_date ?? '')
-const purchase_price = computed(() => car.value?.purchase_price ?? '')
+const purchased_date = computed(() => car.value?.purchased_date ?? '')
+const purchased_price = computed(() => car.value?.purchased_price ?? '')
 
 onMounted(() => {
   handleFetchCar()
@@ -96,13 +96,21 @@ async function handleFetchCar() {
 
 async function handleFetchReminders() {
   try {
-    const res = await fetch(`${API_BASE}/cars/${route.params.carId}/reminders/`)
-    if (!res.ok) {
-      reminders.value = []
-      return
+    const fetchedReminders = []
+    const pageSize = 100
+
+    while (true) {
+      const res = await fetch(`${API_BASE}/cars/${route.params.carId}/reminders/?skip=${fetchedReminders.length}&limit=${pageSize}`)
+      if (!res.ok) {
+        reminders.value = []
+        return
+      }
+      const page = await res.json()
+      fetchedReminders.push(...page)
+      if (page.length < pageSize) break
     }
-    const data = await res.json()
-    reminders.value = Array.isArray(data) ? data : []
+
+    reminders.value = fetchedReminders
   } catch (err) {
     reminders.value = []
   }

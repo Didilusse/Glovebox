@@ -11,7 +11,7 @@
         <div class="form-left">
           <div class="form-group">
             <label>Year</label>
-            <input v-model="year" min="1900" max="9999" placeholder="Enter Car Year" />
+            <input v-model="year" min="1886" :max="maxVehicleYear" placeholder="Enter Car Year" />
           </div>
 
           <div class="form-group">
@@ -34,9 +34,9 @@
           <div class="form-group">
             <label>Fuel Type</label>
             <select v-model="fuelType">
-              <option value="Gasoline">Gasoline</option>
-              <option value="Diesel">Diesel</option>
-              <option value="Electric">Electric</option>
+              <option value="gas">Gasoline</option>
+              <option value="diesel">Diesel</option>
+              <option value="electric">Electric</option>
             </select>
           </div>
 
@@ -102,9 +102,10 @@ const showAdvanced = ref(false)
 
 const vin = ref('')
 const licensePlate = ref('')
-const fuelType = ref('Gasoline')
+const fuelType = ref('gas')
 const purchasedDate = ref('')
 const purchasedPrice = ref('')
+const maxVehicleYear = new Date().getFullYear() + 1
 
 const yearNumber = computed(() => Number(year.value))
 const mileageNumber = computed(() => Number(mileage.value))
@@ -113,8 +114,8 @@ const isFormValid = computed(() => {
   return make.value.length > 0 &&
     model.value.length > 0 &&
     Number.isInteger(yearNumber.value) &&
-    yearNumber.value >= 1900 &&
-    yearNumber.value <= 9999 &&
+    yearNumber.value >= 1886 &&
+    yearNumber.value <= maxVehicleYear &&
     Number.isFinite(mileageNumber.value) &&
     mileageNumber.value >= 0
 })
@@ -130,12 +131,13 @@ async function handleCreateCar() {
     model: model.value.trim(),
     year: yearNumber.value,
     mileage: mileageNumber.value,
-    vin: vin.value.trim(),
-    licensePlate: licensePlate.value.trim(),
-    fuelType: fuelType.value.trim(),
-    purchasedDate: purchasedDate.value.trim(),
-    purchasedPrice: purchasedPrice.value.trim()
+    fuel_type: fuelType.value
   }
+
+  if (vin.value.trim()) payload.vin = vin.value.trim()
+  if (licensePlate.value.trim()) payload.license_plate = licensePlate.value.trim()
+  if (purchasedDate.value) payload.purchased_date = purchasedDate.value
+  if (purchasedPrice.value !== '') payload.purchased_price = Number(purchasedPrice.value)
 
   const response = await fetch(`${props.apiBase}/cars/`, {
     method: 'POST',
@@ -159,7 +161,7 @@ async function handleCreateCar() {
   mileage.value = ''
   vin.value = ''
   licensePlate.value = ''
-  fuelType.value = ''
+  fuelType.value = 'gas'
   purchasedDate.value = ''
   purchasedPrice.value = ''
   showToast('Car created successfully', 'success')

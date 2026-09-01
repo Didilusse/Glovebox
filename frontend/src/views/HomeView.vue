@@ -57,13 +57,21 @@ function handleCloseCarForm() {
 }
 
 async function handleFetchCars() {
-  const response = await fetch(`${API_BASE}/cars/`)
-  if (!response.ok) {
-    showToast('Failed to fetch cars', 'error')
-    throw new Error('Failed to fetch cars')
+  const fetchedCars = []
+  const pageSize = 100
+
+  while (true) {
+    const response = await fetch(`${API_BASE}/cars/?skip=${fetchedCars.length}&limit=${pageSize}`)
+    if (!response.ok) {
+      showToast('Failed to fetch cars', 'error')
+      throw new Error('Failed to fetch cars')
+    }
+    const page = await response.json()
+    fetchedCars.push(...page)
+    if (page.length < pageSize) break
   }
-  const data = await response.json()
-  cars.value = data
+
+  cars.value = fetchedCars
 }
 
 function handleCarCreated(car) {
