@@ -13,3 +13,4 @@ data/
 .DS_Store
 
 frontend/.env
+docker-compose.local.yml
