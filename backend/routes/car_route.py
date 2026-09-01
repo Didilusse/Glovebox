@@ -1,25 +1,31 @@
 from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Query
 from typing import List
-from backend.models.car_model import CarModel
-from backend.database import get_car_collection
+from backend.models.car_model import CarCreate, CarModel, CarResponse, CarUpdate
+from backend.models.maintenance_log import MaintenanceLog
+from backend.models.mod import ModItem
 
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
-@router.post("/", response_model=CarModel, status_code=201)                                                                                                                                                      
-async def add_car(car: CarModel):
-      if car.initial_mileage is None and car.mileage is not None:
-            car.initial_mileage = car.mileage
+@router.post("/", response_model=CarResponse, status_code=201)
+async def add_car(car_data: CarCreate):
+      data = car_data.model_dump()
+      if data["initial_mileage"] is None and data["mileage"] is not None:
+            data["initial_mileage"] = data["mileage"]
+      car = CarModel(**data)
       await car.insert()
-      return car                                                                                                                                                                                                   
+      return car
    
-@router.get("/", response_model=List[CarModel])                                                                                                                                                                  
-async def get_cars():                                 
-      return await CarModel.find_all().to_list()
+@router.get("/", response_model=List[CarResponse])
+async def get_cars(
+      skip: int = Query(0, ge=0),
+      limit: int = Query(100, ge=1, le=100),
+):
+      return await CarModel.find_all().sort(CarModel.id).skip(skip).limit(limit).to_list()
 
-@router.get("/{car_id}", response_model=CarModel)
-async def get_car(car_id: str):
+@router.get("/{car_id}", response_model=CarResponse)
+async def get_car(car_id: PydanticObjectId):
       car = await CarModel.get(car_id)
       if not car:
             raise HTTPException(status_code=404, detail="Car not found")
@@ -38,18 +44,15 @@ async def delete_car(
             detail=f"Car with ID {car_id} not found"
         )
     
-      try:
-        await car.delete()
-      except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail="An error occurred while deleting the car"
-        )
+      await car.update({"$set": {"is_deleting": True}})
+      await MaintenanceLog.find(MaintenanceLog.car_id == car_id).delete()
+      await ModItem.find(ModItem.car_id == car_id).delete()
+      await car.delete()
         
       return None 
 
-@router.patch("/{car_id}", response_model=CarModel)
-async def update_car(car_id: str, car_data: CarModel):
+@router.patch("/{car_id}", response_model=CarResponse)
+async def update_car(car_id: PydanticObjectId, car_data: CarUpdate):
       car = await CarModel.get(car_id)
       if not car:
             raise HTTPException(status_code=404, detail="Car not found")
@@ -59,5 +62,4 @@ async def update_car(car_id: str, car_data: CarModel):
             raise HTTPException(status_code=400, detail="No fields provided for update")
       
       await car.update({"$set": update_data})
-      updated_car = await CarModel.get(car_id)
-      return updated_car
+      return await CarModel.get(car_id)

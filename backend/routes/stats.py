@@ -7,13 +7,13 @@ router = APIRouter(prefix="/cars/{car_id}/stats", tags=["Stats"])
 
 
 @router.get("/")
-async def get_vehicle_stats(car_id: str):
-    car = await CarModel.get(PydanticObjectId(car_id))
+async def get_vehicle_stats(car_id: PydanticObjectId):
+    car = await CarModel.get(car_id)
     if not car:
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     pipeline = [
-        {"$match": {"car_id": PydanticObjectId(car_id)}},
+        {"$match": {"car_id": car_id}},
         {"$group": {
             "_id": None,
             "log_count": {"$sum": 1},
@@ -46,7 +46,7 @@ async def get_vehicle_stats(car_id: str):
         stats["distance_travelled"] = None
 
     done_by_pipeline = [
-        {"$match": {"car_id": PydanticObjectId(car_id)}},
+        {"$match": {"car_id": car_id}},
         {"$group": {
             "_id": "$done_by",
             "total_spent": {"$sum": "$cost"},

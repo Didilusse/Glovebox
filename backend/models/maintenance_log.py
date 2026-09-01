@@ -1,5 +1,5 @@
 from beanie import Document, PydanticObjectId
-from pydantic import Field, BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional
 from datetime import date
 from enum import Enum
@@ -50,18 +50,24 @@ class MaintenanceLog(Document):
 
     class Settings:
         name = "maintenance_logs"
+        indexes = [
+            [("car_id", 1), ("date_of_service", -1)],
+            [("car_id", 1), ("cost", 1)],
+        ]
 
 
 class MaintenanceLogCreate(BaseModel):
     date_of_service: date = Field(default_factory=date.today, description="The date the maintenance was performed")
     done_by: DoneBy = Field(..., description="Who performed the work: self or shop")
-    mileage: int = Field(..., description="Odometer reading at the time of service")
-    cost: float = Field(..., description="The cost of the service")
-    work_done: str = Field(..., description="What work was done")
+    mileage: int = Field(..., ge=0, description="Odometer reading at the time of service")
+    cost: float = Field(..., ge=0, allow_inf_nan=False, description="The cost of the service")
+    work_done: str = Field(..., min_length=1, max_length=500, description="What work was done")
     category: Category = Field(Category.other, description="Category of the maintenance")
-    notes: Optional[str] = Field(None, description="Additional details like parts or products used")
-    interval_miles: int | None = None
-    interval_months: int | None = None
+    notes: Optional[str] = Field(None, max_length=5000, description="Additional details like parts or products used")
+    interval_miles: int | None = Field(None, gt=0)
+    interval_months: int | None = Field(None, gt=0, le=1200)
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     
     @field_validator("category", mode="before")
     def _normalize_category(cls, v):
@@ -75,13 +81,26 @@ class MaintenanceLogCreate(BaseModel):
 class MaintenanceLogUpdate(BaseModel):
     date_of_service: Optional[date] = Field(None, description="The date the maintenance was performed")
     done_by: Optional[DoneBy] = Field(None, description="Who performed the work: self or shop")
-    mileage: Optional[int] = Field(None, description="Odometer reading at the time of service")
-    cost: Optional[float] = Field(None, description="The cost of the service")
-    work_done: Optional[str] = Field(None, description="What work was done")
+    mileage: Optional[int] = Field(None, ge=0, description="Odometer reading at the time of service")
+    cost: Optional[float] = Field(None, ge=0, allow_inf_nan=False, description="The cost of the service")
+    work_done: Optional[str] = Field(None, min_length=1, max_length=500, description="What work was done")
     category: Optional[Category] = Field(None, description="Category of the maintenance")
-    interval_miles: Optional[int] = Field(None, description="Interval in miles for next reminder")
-    interval_months: Optional[int] = Field(None, description="Interval in months for next reminder")
-    notes: Optional[str] = Field(None, description="Additional details like parts or products used")
+    interval_miles: Optional[int] = Field(None, gt=0, description="Interval in miles for next reminder")
+    interval_months: Optional[int] = Field(None, gt=0, le=1200, description="Interval in months for next reminder")
+    notes: Optional[str] = Field(None, max_length=5000, description="Additional details like parts or products used")
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    @model_validator(mode="after")
+    def reject_null_for_required_fields(self):
+        required_fields = {"date_of_service", "done_by", "mileage", "cost", "work_done", "category"}
+        null_fields = [
+            name for name in self.model_fields_set
+            if name in required_fields and getattr(self, name) is None
+        ]
+        if null_fields:
+            raise ValueError(f"Fields cannot be null: {', '.join(sorted(null_fields))}")
+        return self
 
     @field_validator("category", mode="before")
     def _normalize_category_update(cls, v):

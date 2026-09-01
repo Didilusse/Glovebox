@@ -14,21 +14,18 @@ router = APIRouter(prefix="/cars/{car_id}/reminders", tags=["Reminders"])
 
 @router.get("/", response_model=List[MaintenanceReminder])
 async def list_reminders(
-	car_id: str,
+	car_id: PydanticObjectId,
 	only_due: bool = Query(False, description="Return only reminders that are currently due"),
+	skip: int = Query(0, ge=0),
+	limit: int = Query(100, ge=1, le=100),
 ):
-	try:
-		car_object_id = PydanticObjectId(car_id)
-	except Exception:
-		raise HTTPException(status_code=400, detail="Invalid car ID format")
-
-	car = await CarModel.get(car_object_id)
+	car = await CarModel.get(car_id)
 	if not car:
 		raise HTTPException(status_code=404, detail="Car not found")
 
-	maintenance_logs = await MaintenanceLog.find(MaintenanceLog.car_id == car_object_id).to_list()
+	maintenance_logs = await MaintenanceLog.find(MaintenanceLog.car_id == car_id).to_list()
 	current_date = date.today()
-	current_mileage = car.mileage or car.initial_mileage
+	current_mileage = car.mileage if car.mileage is not None else car.initial_mileage
 
 	reminders = []
 	for maintenance_log in maintenance_logs:
@@ -60,5 +57,10 @@ async def list_reminders(
 			)
 		)
 
-	reminders.sort(key=lambda reminder: reminder_sort_key(reminder.reminder_date, reminder.reminder_mileage))
-	return reminders
+	reminders.sort(
+		key=lambda reminder: (
+			reminder_sort_key(reminder.reminder_date, reminder.reminder_mileage),
+			str(reminder.log_id),
+		)
+	)
+	return reminders[skip:skip + limit]

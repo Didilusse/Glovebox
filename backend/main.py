@@ -1,14 +1,17 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database import init_db
+from backend.database import close_db, init_db
 from backend.routes import maintenance_logs, car_route, stats, reminder, mods
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    yield
+    try:
+        await init_db()
+        yield
+    finally:
+        await close_db()
 
 app = FastAPI(title="Glovebox API", lifespan=lifespan)
 
