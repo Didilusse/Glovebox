@@ -3,7 +3,8 @@
   <Toast />
   <main class="maintenance-page">
     <MaintenanceHeader @add="openCreateMaintenance" @import="isImportOpen = true" />
-    <MaintenanceList :maintenances="maintenances" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
+    <MaintenanceControls v-model:search="search" v-model:sort="sort" />
+    <MaintenanceList :maintenances="displayedMaintenances" :has-records="maintenances.length > 0" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
   </main>
 
   <MaintenanceForm
@@ -33,16 +34,21 @@ import MaintenanceForm from '../components/MaintenanceForm.vue'
 import MaintenanceHeader from '../components/MaintenanceHeader.vue'
 import MaintenanceList from '../components/MaintenanceList.vue'
 import MaintenanceImport from '../components/MaintenanceImport.vue'
+import MaintenanceControls from '../components/MaintenanceControls.vue'
+import { filterAndSortMaintenances } from '../utils/maintenanceDisplay.js'
 const route = useRoute()
 const maintenances = ref([])
 const isFormOpen = ref(false)
 const isImportOpen = ref(false)
 const selectedMaintenance = ref(null)
+const search = ref('')
+const sort = ref('recent')
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
 
 const formMode = computed(() => (selectedMaintenance.value ? 'edit' : 'create'))
 const formKey = computed(() => selectedMaintenance.value?._id ?? 'new')
+const displayedMaintenances = computed(() => filterAndSortMaintenances(maintenances.value, search.value, sort.value))
 
 
 

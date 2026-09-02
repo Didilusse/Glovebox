@@ -1,7 +1,7 @@
 <template>
   <section class="maintenance-list">
     <div v-if="!maintenances.length" class="empty-state">
-      No maintenance logs yet.
+      {{ hasRecords ? 'No maintenance records match your search.' : 'No maintenance logs yet.' }}
     </div>
 
     <MaintenanceLogCard
@@ -23,6 +23,10 @@ defineProps({
   maintenances: {
     type: Array,
     default: () => []
+  },
+  hasRecords: {
+    type: Boolean,
+    default: false
   }
 })
 </script>
