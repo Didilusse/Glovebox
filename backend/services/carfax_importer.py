@@ -14,8 +14,13 @@ VIN_RE = re.compile(r"\b([A-HJ-NPR-Z0-9]{17})\b", re.IGNORECASE)
 
 OCR_CORRECTIONS = {
     "dlter": "filter",
+    "elter": "filter",
+    "flter": "filter",
+    "?lter": "filter",
     "huid": "fluid",
+    "juid": "fluid",
     "hushed": "flushed",
+    "jushed": "flushed",
     "redlls": "refills",
     "Verided": "Verified",
 }
@@ -292,7 +297,7 @@ def _extract_work_items(lines: list[str]) -> list[str]:
 
 def _correct_ocr(value: str) -> str:
     for wrong, right in OCR_CORRECTIONS.items():
-        value = re.sub(rf"\b{re.escape(wrong)}\b", right, value, flags=re.IGNORECASE)
+        value = re.sub(rf"(?<!\w){re.escape(wrong)}(?!\w)", right, value, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", value).strip()
 
 
@@ -310,6 +315,8 @@ def _is_noise(value: str) -> bool:
         or lower.endswith(".com")
         or lower.startswith("owner ")
         or lower.startswith("purchased:")
+        or lower in {"personal vehicle", "lease vehicle"}
+        or re.fullmatch(r"\d[\d,]* mi/yr", lower) is not None
         or lower in {"date mileage source comments", "date", "mileage", "source", "comments"}
         or "manufacturer recommended maintenance schedules" in lower
         or "have questions?" in lower
