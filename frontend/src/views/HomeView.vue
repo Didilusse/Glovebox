@@ -9,10 +9,6 @@
           <span>Glovebox</span>
         </a>
 
-        <nav aria-label="Main navigation">
-          <a class="active" href="/">Garage</a>
-        </nav>
-
         <button type="button" class="header-add-button" @click="handleShowCarForm">
           Add car
         </button>
@@ -148,8 +144,7 @@ async function handleDeleteCar(carId) {
   font-weight: 700;
 }
 
-.site-title:hover,
-.header-inner nav a:hover {
+  .site-title:hover {
   background: transparent;
 }
 
@@ -157,22 +152,6 @@ async function handleDeleteCar(carId) {
   width: 42px;
   height: 42px;
   object-fit: contain;
-}
-
-.header-inner nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-inner nav a {
-  padding: 8px 10px;
-  color: #a0aec0;
-  font-size: 0.9rem;
-}
-
-.header-inner nav a.active {
-  color: white;
 }
 
 .header-add-button {
@@ -260,10 +239,6 @@ async function handleDeleteCar(carId) {
   .header-inner {
     width: min(100% - 28px, 1200px);
     gap: 16px;
-  }
-
-  .header-inner nav {
-    display: none;
   }
 
   .header-add-button {
