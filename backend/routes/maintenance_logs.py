@@ -8,44 +8,14 @@ from backend.models.maintenance_log import (
 )
 from typing import List
 
+from backend.services.maintenance import create_log
 from backend.services.reminders import calculate_next_reminder
 
 router = APIRouter(prefix="/cars/{car_id}/logs", tags=["Maintenance Logs"])
 
 @router.post("/", response_model=MaintenanceLog, status_code=201)
 async def create_maintenance_log(car_id: PydanticObjectId, log_data: MaintenanceLogCreate):
-    car = await CarModel.get(car_id)
-
-    if not car or car.is_deleting:
-        raise HTTPException(status_code=404, detail="Car not found")
-
-    reminder_date, reminder_mileage = calculate_next_reminder(
-        date_of_service=log_data.date_of_service,
-        mileage=log_data.mileage,
-        interval_months=log_data.interval_months,
-        interval_miles=log_data.interval_miles,
-    )
-
-    maintenanceLog = MaintenanceLog(
-        car_id=car_id,
-        reminder_date=reminder_date,
-        reminder_mileage=reminder_mileage,
-        **log_data.model_dump()
-    )
-    await maintenanceLog.insert()
-
-    try:
-        result = await CarModel.get_pymongo_collection().update_one(
-            {"_id": car_id, "is_deleting": {"$ne": True}},
-            {"$max": {"mileage": log_data.mileage}},
-        )
-    except Exception:
-        await maintenanceLog.delete()
-        raise
-    if result.matched_count == 0:
-        await maintenanceLog.delete()
-        raise HTTPException(status_code=404, detail="Car not found")
-    return maintenanceLog
+    return await create_log(car_id, log_data)
 
 @router.get("/", response_model=List[MaintenanceLog])
 async def get_maintenance_logs(car_id: PydanticObjectId, done_by: str | None = None,
@@ -145,9 +115,14 @@ async def update_maintenance_log(
 
     await maintenance_log.save()
     try:
+        update = (
+            {"$max": {"mileage": maintenance_log.mileage}}
+            if maintenance_log.mileage is not None
+            else {"$set": {"is_deleting": False}}
+        )
         result = await CarModel.get_pymongo_collection().update_one(
-            {"_id": car_id},
-            {"$max": {"mileage": maintenance_log.mileage}},
+            {"_id": car_id, "is_deleting": {"$ne": True}},
+            update,
         )
     except Exception:
         for key, value in original_payload.items():

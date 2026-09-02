@@ -31,8 +31,8 @@ def test_maintenance_schema_distinguishes_clearing_from_required_nulls():
     update = MaintenanceLogUpdate(notes=None, interval_miles=None)
     assert update.model_dump(exclude_unset=True) == {"notes": None, "interval_miles": None}
 
-    with pytest.raises(ValidationError):
-        MaintenanceLogUpdate(mileage=None)
+    imported_update = MaintenanceLogUpdate(mileage=None, cost=None)
+    assert imported_update.model_dump(exclude_unset=True) == {"mileage": None, "cost": None}
 
     with pytest.raises(ValidationError):
         MaintenanceLogCreate(

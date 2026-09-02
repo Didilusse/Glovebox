@@ -17,6 +17,7 @@ describe('CarForm', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const wrapper = mount(CarForm, { props: { apiBase: 'http://api.test' } })
+    expect(wrapper.text()).toContain('Import CARFAX')
     const mainInputs = wrapper.findAll('.form-left input')
     await mainInputs[0].setValue('2020')
     await mainInputs[1].setValue('Toyota')
@@ -37,5 +38,19 @@ describe('CarForm', () => {
       fuel_type: 'gas',
       license_plate: 'ABC-123'
     })
+  })
+
+  it('forwards an imported CARFAX car to the garage', async () => {
+    const wrapper = mount(CarForm, { props: { apiBase: 'http://api.test' } })
+    await wrapper.findAll('.method-picker button')[1].trigger('click')
+    const importedCar = { _id: 'car-imported', make: 'Honda' }
+
+    wrapper.getComponent({ name: 'CarfaxCarImport' }).vm.$emit('created', {
+      car: importedCar,
+      created: 29
+    })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('created')[0][0]).toEqual(importedCar)
   })
 })

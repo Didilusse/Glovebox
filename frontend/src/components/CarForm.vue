@@ -6,7 +6,12 @@
 
     <h2>Add a Car</h2>
 
-    <form class="form-section" @submit.prevent="handleCreateCar">
+    <div class="method-picker" role="tablist" aria-label="How to add a car">
+      <button type="button" :class="{ active: method === 'manual' }" @click="method = 'manual'">Enter manually</button>
+      <button type="button" :class="{ active: method === 'carfax' }" @click="method = 'carfax'">Import CARFAX</button>
+    </div>
+
+    <form v-if="method === 'manual'" class="form-section" @submit.prevent="handleCreateCar">
       <div class="form-layout">
         <div class="form-left">
           <div class="form-group">
@@ -77,12 +82,14 @@
         <button type="submit" class="submit-button">Create Car</button>
       </div>
     </form>
+    <CarfaxCarImport v-else :api-base="apiBase" @created="handleCarfaxCreated" @cancel="method = 'manual'" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
 import { showToast } from './Toast.vue'
+import CarfaxCarImport from './CarfaxCarImport.vue'
 
 const props = defineProps({
   apiBase: {
@@ -97,6 +104,7 @@ const make = ref('')
 const model = ref('')
 const year = ref('')
 const mileage = ref('')
+const method = ref('manual')
 
 const showAdvanced = ref(false)
 
@@ -166,6 +174,11 @@ async function handleCreateCar() {
   purchasedPrice.value = ''
   showToast('Car created successfully', 'success')
 }
+
+function handleCarfaxCreated(result) {
+  showToast(`Car added with ${result.created} CARFAX service records`, 'success')
+  emit('created', result.car)
+}
 </script>
 
 <style scoped>
@@ -189,6 +202,31 @@ async function handleCreateCar() {
   text-align: left;
   font-size: 1.5rem;
   color: var(--gb-heading);
+}
+
+.method-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--gb-border);
+  border-radius: 12px;
+  background: var(--gb-background-deep);
+}
+
+.method-picker button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--gb-text-muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.method-picker button.active {
+  background: rgba(179, 199, 255, 0.12);
+  color: var(--gb-accent);
 }
 
 .close-button {

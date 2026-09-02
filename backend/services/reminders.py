@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 
 def calculate_next_reminder(
     date_of_service: date,
-    mileage: int,
+    mileage: Optional[int],
     interval_months: int | None,
     interval_miles: int | None,
 ) -> tuple[Optional[date], Optional[int]]:
@@ -15,7 +15,11 @@ def calculate_next_reminder(
         if interval_months is not None
         else None
     )
-    reminder_mileage = mileage + interval_miles if interval_miles is not None else None
+    reminder_mileage = (
+        mileage + interval_miles
+        if mileage is not None and interval_miles is not None
+        else None
+    )
     return reminder_date, reminder_mileage
 
 

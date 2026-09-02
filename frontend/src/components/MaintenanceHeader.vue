@@ -5,14 +5,15 @@
       <p class="subtitle">Service history for this car.</p>
     </div>
 
-    <button type="button" class="add-button" @click="$emit('add')">
-      Add new
-    </button>
+    <div class="actions">
+      <button type="button" class="import-button" @click="$emit('import')">Import CARFAX</button>
+      <button type="button" class="add-button" @click="$emit('add')">Add new</button>
+    </div>
   </header>
 </template>
 
 <script setup>
-defineEmits(['add'])
+defineEmits(['add', 'import'])
 </script>
 
 <style scoped>
@@ -35,7 +36,14 @@ defineEmits(['add'])
   color: var(--gb-text-muted);
 }
 
-.add-button {
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.add-button,
+.import-button {
   border: none;
   border-radius: 999px;
   padding: 10px 16px;
@@ -43,10 +51,34 @@ defineEmits(['add'])
   color: #141820;
   font-weight: 700;
   cursor: pointer;
-  margin-left: auto;
 }
 
 .add-button:hover {
   background: var(--gb-accent-hover);
+}
+
+.import-button {
+  border: 1px solid var(--gb-border-strong);
+  background: transparent;
+  color: var(--gb-accent);
+}
+
+.import-button:hover {
+  border-color: var(--gb-accent);
+}
+
+@media (max-width: 600px) {
+  .maintenance-header {
+    flex-direction: column;
+  }
+
+  .actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .actions button {
+    flex: 1;
+  }
 }
 </style>

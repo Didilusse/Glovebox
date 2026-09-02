@@ -169,8 +169,8 @@ watch(
 function handleSubmit() {
   isSubmitted.value = true
 
-  const hasMileage = !(mileage.value === null || mileage.value === '')
-  const hasCost = !(cost.value === null || cost.value === '')
+  const hasMileage = isEditMode.value || !(mileage.value === null || mileage.value === '')
+  const hasCost = isEditMode.value || !(cost.value === null || cost.value === '')
   const hasWork = Boolean(work_done.value && work_done.value.trim())
   const hasDoneBy = Boolean(done_by.value)
   const hasCategory = Boolean(category.value)
@@ -184,8 +184,8 @@ function handleSubmit() {
 
   const payload = {
     date_of_service: date.value,
-    mileage: Number(mileage.value),
-    cost: Number(cost.value),
+    mileage: mileage.value === null || mileage.value === '' ? null : Number(mileage.value),
+    cost: cost.value === null || cost.value === '' ? null : Number(cost.value),
     done_by: done_by.value,
     category: category.value,
     interval_months: createReminder.value ? (interval_months.value !== null && interval_months.value !== '' ? Number(interval_months.value) : null) : null,

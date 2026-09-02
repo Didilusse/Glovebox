@@ -39,6 +39,9 @@ async def get_vehicle_stats(car_id: PydanticObjectId):
 
     stats = result[0]
     stats.pop("_id", None)
+    for field in ("avg_cost_per_service", "total_spent", "max_cost"):
+        if stats.get(field) is None:
+            stats[field] = 0.0
 
     if car.mileage is not None and car.initial_mileage is not None:
         stats["distance_travelled"] = car.mileage - car.initial_mileage

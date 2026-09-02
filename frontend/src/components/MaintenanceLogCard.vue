@@ -10,6 +10,8 @@
         <p class="meta">Date: {{ log.date_of_service || 'N/A' }}</p>
         <p class="meta">Mileage: {{ log.mileage ?? 'N/A' }}</p>
         <p class="meta">Cost: {{ log.cost ?? 'N/A' }}</p>
+        <p v-if="log.service_provider" class="meta">Provider: {{ log.service_provider }}</p>
+        <p v-if="log.source" class="meta source">Imported from {{ log.source.toUpperCase() }}</p>
         <p v-if="log.reminder_date || log.reminder_mileage" class="meta">Reminder: {{ log.reminder_date ? log.reminder_date : '' }} {{ log.reminder_mileage ? `(at ${log.reminder_mileage} miles)` : '' }}</p>
         <p v-if="log.notes" class="meta">Notes: {{ log.notes }}</p>
       </div>
@@ -90,6 +92,11 @@ defineProps({
   margin: 4px 0;
   color: var(--gb-text-muted);
   font-size: 0.9rem;
+}
+
+.source {
+  color: var(--gb-accent);
+  font-size: 0.76rem;
 }
 
 .delete {

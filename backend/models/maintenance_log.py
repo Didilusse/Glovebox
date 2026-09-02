@@ -1,4 +1,5 @@
 from beanie import Document, PydanticObjectId
+from pymongo import IndexModel
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional
 from datetime import date
@@ -23,8 +24,8 @@ class MaintenanceLog(Document):
     car_id: PydanticObjectId
     date_of_service: date
     done_by: DoneBy = DoneBy.shop
-    mileage: int
-    cost: float
+    mileage: Optional[int] = None
+    cost: Optional[float] = None
     work_done: str = "Maintenance"
     category: Category = Category.other
     notes: Optional[str] = None
@@ -38,6 +39,9 @@ class MaintenanceLog(Document):
         None,
         description="The calculated mileage when the next maintenance reminder should be sent."
     )
+    source: Optional[str] = None
+    source_record_key: Optional[str] = None
+    service_provider: Optional[str] = None
 
     @field_validator("category", mode="before")
     def _normalize_category_doc(cls, v):
@@ -53,6 +57,11 @@ class MaintenanceLog(Document):
         indexes = [
             [("car_id", 1), ("date_of_service", -1)],
             [("car_id", 1), ("cost", 1)],
+            IndexModel(
+                [("car_id", 1), ("source", 1), ("source_record_key", 1)],
+                unique=True,
+                partialFilterExpression={"source_record_key": {"$type": "string"}},
+            ),
         ]
 
 
@@ -93,7 +102,7 @@ class MaintenanceLogUpdate(BaseModel):
 
     @model_validator(mode="after")
     def reject_null_for_required_fields(self):
-        required_fields = {"date_of_service", "done_by", "mileage", "cost", "work_done", "category"}
+        required_fields = {"date_of_service", "done_by", "work_done", "category"}
         null_fields = [
             name for name in self.model_fields_set
             if name in required_fields and getattr(self, name) is None
@@ -115,7 +124,7 @@ class MaintenanceReminder(BaseModel):
     log_id: PydanticObjectId
     car_id: PydanticObjectId
     date_of_service: date
-    mileage: int
+    mileage: Optional[int] = None
     work_done: str
     reminder_date: Optional[date] = None
     reminder_mileage: Optional[int] = None

@@ -2,7 +2,7 @@
   <NavBar />
   <Toast />
   <main class="maintenance-page">
-    <MaintenanceHeader @add="openCreateMaintenance" />
+    <MaintenanceHeader @add="openCreateMaintenance" @import="isImportOpen = true" />
     <MaintenanceList :maintenances="maintenances" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
   </main>
 
@@ -15,6 +15,13 @@
     @created="handleCreateMaintenance"
     @updated="handleUpdateMaintenance"
   />
+  <MaintenanceImport
+    v-if="isImportOpen"
+    :car-id="route.params.carId"
+    :api-base="API_BASE"
+    @close="isImportOpen = false"
+    @imported="handleImported"
+  />
 </template>
 
 <script setup>
@@ -25,9 +32,11 @@ import NavBar from '../components/NavBar.vue'
 import MaintenanceForm from '../components/MaintenanceForm.vue'
 import MaintenanceHeader from '../components/MaintenanceHeader.vue'
 import MaintenanceList from '../components/MaintenanceList.vue'
+import MaintenanceImport from '../components/MaintenanceImport.vue'
 const route = useRoute()
 const maintenances = ref([])
 const isFormOpen = ref(false)
+const isImportOpen = ref(false)
 const selectedMaintenance = ref(null)
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
@@ -146,6 +155,12 @@ function openEditMaintenance(log) {
 function closeMaintenanceForm() {
   isFormOpen.value = false
   selectedMaintenance.value = null
+}
+
+async function handleImported(result) {
+  isImportOpen.value = false
+  await handleFetchMaintenances()
+  showToast(`Imported ${result.created} maintenance records${result.skipped_duplicates ? `; skipped ${result.skipped_duplicates} duplicates` : ''}`, 'success')
 }
 
 function handleBack() {
