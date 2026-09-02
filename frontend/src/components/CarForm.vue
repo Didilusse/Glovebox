@@ -174,13 +174,13 @@ async function handleCreateCar() {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  border: 1px solid #444;
+  border: 1px solid var(--gb-border);
   padding: 30px;
-  border-radius: 8px;
+  border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 900px;
-  background: #2a2a2a;
+  background: var(--gb-surface);
 }
 
 .car-form h2 {
@@ -188,7 +188,7 @@ async function handleCreateCar() {
   margin-top: -10px;
   text-align: left;
   font-size: 1.5rem;
-  color: #fff;
+  color: var(--gb-heading);
 }
 
 .close-button {
@@ -200,7 +200,7 @@ async function handleCreateCar() {
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #999;
+  color: var(--gb-text-muted);
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
@@ -210,8 +210,8 @@ async function handleCreateCar() {
 }
 
 .close-button:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--gb-heading);
+  background-color: rgba(179, 199, 255, 0.08);
 }
 
 .form-section {
@@ -249,28 +249,28 @@ async function handleCreateCar() {
 .form-group label {
   font-size: 0.95rem;
   font-weight: 500;
-  color: #fff;
+  color: var(--gb-text);
 }
 
 .form-group input,
 .form-group select {
   padding: 10px 12px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background-color: #1e1e1e;
-  color: #fff;
+  border: 1px solid var(--gb-border);
+  border-radius: 8px;
+  background-color: var(--gb-background-deep);
+  color: var(--gb-heading);
   font-size: 0.95rem;
 }
 
 .form-group input::placeholder {
-  color: #666;
+  color: #727d90;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+  border-color: var(--gb-accent);
+  box-shadow: 0 0 0 3px rgba(179, 199, 255, 0.1);
 }
 
 .form-actions {
@@ -279,14 +279,14 @@ async function handleCreateCar() {
   justify-content: flex-end;
   margin-top: 10px;
   padding-top: 20px;
-  border-top: 1px solid #444;
+  border-top: 1px solid var(--gb-border);
 }
 
 .submit-button,
 .cancel-button {
   padding: 10px 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
@@ -294,29 +294,30 @@ async function handleCreateCar() {
 }
 
 .submit-button {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--gb-accent);
+  color: #141820;
 }
 
 .submit-button:hover {
-  background-color: #0056b3;
+  background-color: var(--gb-accent-hover);
 }
 
 .cancel-button {
-  background-color: #6c757d;
-  color: white;
+  border: 1px solid var(--gb-border);
+  background-color: transparent;
+  color: var(--gb-text);
 }
 
 .cancel-button:hover {
-  background-color: #5a6268;
+  background-color: var(--gb-surface-hover);
 }
 
 .advanced-toggle {
   padding: 10px 12px;
-  border: 1px solid #007bff;
-  border-radius: 4px;
+  border: 1px solid var(--gb-border-strong);
+  border-radius: 8px;
   background-color: transparent;
-  color: #007bff;
+  color: var(--gb-accent);
   font-weight: 500;
   font-size: 0.95rem;
   cursor: pointer;
@@ -325,8 +326,9 @@ async function handleCreateCar() {
 }
 
 .advanced-toggle:hover {
-  background-color: #007bff;
-  color: white;
+  border-color: var(--gb-accent);
+  background-color: rgba(179, 199, 255, 0.08);
+  color: var(--gb-accent-hover);
 }
 
 .advanced-options {
@@ -334,8 +336,8 @@ async function handleCreateCar() {
   flex-direction: column;
   gap: 15px;
   padding: 15px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background-color: rgba(0, 123, 255, 0.05);
+  border: 1px solid var(--gb-border);
+  border-radius: 10px;
+  background-color: rgba(179, 199, 255, 0.04);
 }
 </style>

@@ -2,34 +2,42 @@
 
   <NavBar />
   
-  <div class="car-detail">
-    <h1>{{ carMake }}</h1>
-    <p><strong>Model:</strong> {{ model }}</p>
-    <p><strong>Year:</strong> {{ year }}</p>
-    <p><strong>Mileage:</strong> {{ mileage }}</p>
-    <p><strong>Initial Mileage:</strong> {{ initial_mileage }}</p>
-    <p><strong>VIN:</strong> {{ vin }}</p>
-    <p><strong>License Plate:</strong> {{ license_plate }}</p>
-    <p><strong>Fuel Type:</strong> {{ fuel_type }}</p>
-    <p><strong>Purchase Date:</strong> {{ purchased_date }}</p>
-    <p><strong>Purchase Price:</strong> {{ purchased_price }}</p>
+  <main class="car-detail">
+    <header class="detail-header">
+      <span>Vehicle dashboard</span>
+      <h1>{{ carMake }}</h1>
+    </header>
 
-    <div class="car-stats" v-if="stats">
+    <section class="vehicle-details" aria-label="Vehicle details">
+      <p><strong>Model</strong><span>{{ model || 'N/A' }}</span></p>
+      <p><strong>Year</strong><span>{{ year || 'N/A' }}</span></p>
+      <p><strong>Mileage</strong><span>{{ mileage || 'N/A' }}</span></p>
+      <p><strong>Initial Mileage</strong><span>{{ initial_mileage || 'N/A' }}</span></p>
+      <p><strong>VIN</strong><span>{{ vin || 'N/A' }}</span></p>
+      <p><strong>License Plate</strong><span>{{ license_plate || 'N/A' }}</span></p>
+      <p><strong>Fuel Type</strong><span>{{ fuel_type || 'N/A' }}</span></p>
+      <p><strong>Purchase Date</strong><span>{{ purchased_date || 'N/A' }}</span></p>
+      <p><strong>Purchase Price</strong><span>{{ purchased_price || 'N/A' }}</span></p>
+    </section>
+
+    <section class="car-stats" v-if="stats">
       <h2>Stats</h2>
-      <p><strong>Log Count:</strong> {{ stats.log_count }}</p>
-      <p><strong>Avg Cost per Service:</strong> {{ stats.avg_cost_per_service }}</p>
-      <p><strong>Total Spent:</strong> {{ stats.total_spent }}</p>
-      <p><strong>Max Cost:</strong> {{ stats.max_cost }}</p>
-      <p><strong>Distance Travelled:</strong> {{ stats.distance_travelled ?? 'N/A' }}</p>
+      <div class="stats-grid">
+        <p><strong>Log Count</strong><span>{{ stats.log_count }}</span></p>
+        <p><strong>Avg Cost per Service</strong><span>{{ stats.avg_cost_per_service }}</span></p>
+        <p><strong>Total Spent</strong><span>{{ stats.total_spent }}</span></p>
+        <p><strong>Max Cost</strong><span>{{ stats.max_cost }}</span></p>
+        <p><strong>Distance Travelled</strong><span>{{ stats.distance_travelled ?? 'N/A' }}</span></p>
+      </div>
 
-      <div v-if="stats.cost_by_done_by">
+      <div v-if="stats.cost_by_done_by" class="cost-breakdown">
         <h3>Cost by Done By</h3>
         <div v-for="(val, key) in stats.cost_by_done_by" :key="key">
           <p><strong>{{ key }}:</strong> Total {{ val.total_spent }} — Count {{ val.count }}</p>
         </div>
       </div>
-    </div>
-    <div class="car-reminders" v-if="reminders && reminders.length">
+    </section>
+    <section class="car-reminders" v-if="reminders && reminders.length">
       <h2>Reminders</h2>
       <ul>
         <li v-for="r in reminders" :key="r.log_id" class="reminder-item">
@@ -43,8 +51,8 @@
           </div>
         </li>
       </ul>
-    </div>
-  </div>
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -163,5 +171,159 @@ function handleBack() {
 </script>
 
 <style scoped>
+.car-detail {
+  width: min(100% - 40px, 1200px);
+  min-height: calc(100vh - 70px);
+  margin: 0 auto;
+  padding: clamp(40px, 7vw, 72px) 0 80px;
+}
+
+.detail-header {
+  margin-bottom: 34px;
+}
+
+.detail-header > span {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(179, 199, 255, 0.1);
+  color: var(--gb-accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.detail-header h1 {
+  color: var(--gb-heading);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.vehicle-details,
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--gb-border);
+  border-radius: 16px;
+  background: var(--gb-border);
+}
+
+.vehicle-details p,
+.stats-grid p {
+  min-width: 0;
+  padding: 18px;
+  background: var(--gb-surface);
+}
+
+.vehicle-details strong,
+.vehicle-details span,
+.stats-grid strong,
+.stats-grid span {
+  display: block;
+}
+
+.vehicle-details strong,
+.stats-grid strong {
+  color: #7f8b9f;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.vehicle-details span,
+.stats-grid span {
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--gb-heading);
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.car-stats,
+.car-reminders {
+  margin-top: 42px;
+}
+
+.car-stats h2,
+.car-reminders h2 {
+  margin-bottom: 18px;
+  color: var(--gb-heading);
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.cost-breakdown {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--gb-border);
+  border-radius: 16px;
+  background: var(--gb-surface);
+}
+
+.cost-breakdown h3 {
+  margin-bottom: 8px;
+  color: var(--gb-heading);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cost-breakdown p {
+  color: var(--gb-text-muted);
+}
+
+.car-reminders ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.reminder-item {
+  padding: 20px;
+  border: 1px solid var(--gb-border);
+  border-radius: 16px;
+  background: var(--gb-surface);
+  color: var(--gb-text-muted);
+}
+
+.reminder-item > strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--gb-heading);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.reminder-item button {
+  margin-top: 14px;
+  padding: 8px 13px;
+  border: 1px solid var(--gb-border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gb-accent);
+  cursor: pointer;
+}
+
+.reminder-item button:hover {
+  border-color: var(--gb-accent);
+}
+
+@media (max-width: 700px) {
+  .car-detail {
+    width: min(100% - 28px, 1200px);
+    padding-top: 36px;
+  }
+
+  .vehicle-details,
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 
 </style>

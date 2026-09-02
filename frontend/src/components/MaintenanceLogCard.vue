@@ -35,10 +35,15 @@ defineProps({
 
 <style scoped>
 .card {
-  border: 1px solid #1e1e1e;
-  border-radius: 12px;
-  padding: 16px;
-  background: #333;
+  border: 1px solid var(--gb-border);
+  border-radius: 16px;
+  padding: 20px;
+  background: var(--gb-surface);
+  transition: border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--gb-border-strong);
 }
 
 .title-row {
@@ -61,30 +66,65 @@ defineProps({
 
 .actions {
   display: flex;
+  gap: 8px;
   align-items: flex-end;
 }
 
 .title {
   margin: 0;
-  font-size: 1.05rem;
+  color: var(--gb-heading);
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .done-by {
-  color: #666;
-  font-size: 0.9rem;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(179, 199, 255, 0.08);
+  color: var(--gb-accent);
+  font-size: 0.72rem;
+  text-transform: capitalize;
 }
 
 .meta {
   margin: 4px 0;
-  color: #555;
+  color: var(--gb-text-muted);
+  font-size: 0.9rem;
 }
 
 .delete {
-  background-color: #dc3545;
+  background-color: transparent;
   border: none;
-  color: white;
+  color: var(--gb-danger);
   padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.delete:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.secondary {
+  padding: 6px 12px;
+  border: 1px solid var(--gb-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gb-accent);
+  cursor: pointer;
+}
+
+.secondary:hover {
+  border-color: var(--gb-accent);
+}
+
+@media (max-width: 600px) {
+  .card-body {
+    flex-direction: column;
+  }
+
+  .actions {
+    align-items: center;
+  }
 }
 </style>

@@ -2,28 +2,31 @@
   <nav class="navbar">
     <div class="navbar-container">
       <router-link to="/" class="navbar-brand">
-        Glovebox
+        <img src="/Glovebox.png" alt="" />
+        <span>Glovebox</span>
       </router-link>
 
-      <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="navbar-toggle">
-        ☰
+      <button
+        type="button"
+        class="navbar-toggle"
+        :aria-expanded="isMobileMenuOpen"
+        aria-label="Toggle navigation"
+        @click="isMobileMenuOpen = !isMobileMenuOpen"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
       </button>
 
       <ul :class="['navbar-menu', { open: isMobileMenuOpen }]">
         <li>
-          <router-link :to="carDetailLink" @click="isMobileMenuOpen = false">
-            Dashboard
-          </router-link>
+          <router-link :to="carDetailLink" @click="isMobileMenuOpen = false">Dashboard</router-link>
         </li>
         <li>
-          <router-link :to="maintenanceLink" @click="isMobileMenuOpen = false">
-            Maintenance
-          </router-link>
+          <router-link :to="maintenanceLink" @click="isMobileMenuOpen = false">Maintenance</router-link>
         </li>
         <li>
-          <router-link :to="modsLink" @click="isMobileMenuOpen = false">
-            Mods
-          </router-link>
+          <router-link :to="modsLink" @click="isMobileMenuOpen = false">Mods</router-link>
         </li>
       </ul>
     </div>
@@ -31,90 +34,116 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const isMobileMenuOpen = ref(false)
 const route = useRoute()
-const carDetailLink = computed(() => {
-  const carId = route.params.carId
-  return carId ? `/car/${carId}` : '/car'
-})
-const maintenanceLink = computed(() => {
-  const carId = route.params.carId
-  return carId ? `/maintenance/${carId}` : '/maintenance'
-})
-const modsLink = computed(() => {
-  const carId = route.params.carId
-  return carId ? `/mods/${carId}` : '/mods'
-})
+const carDetailLink = computed(() => route.params.carId ? `/car/${route.params.carId}` : '/car')
+const maintenanceLink = computed(() => route.params.carId ? `/maintenance/${route.params.carId}` : '/maintenance')
+const modsLink = computed(() => route.params.carId ? `/mods/${route.params.carId}` : '/mods')
 </script>
 
 <style scoped>
 .navbar {
-  background: #333;
-  color: white;
-  padding: 1rem 0;
+  position: relative;
+  z-index: 20;
+  border-bottom: 1px solid var(--gb-border);
+  background: var(--gb-background-deep);
 }
 
 .navbar-container {
-  max-width: 1200px;
+  width: min(100% - 40px, 1200px);
+  min-height: 70px;
   margin: 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 1rem;
+  gap: 36px;
 }
 
 .navbar-brand {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: white;
-  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  color: var(--gb-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
-.navbar-toggle {
-  display: none;
-  background: none;
-  border: none;
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
+.navbar-brand:hover {
+  background: transparent;
+}
+
+.navbar-brand img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
 }
 
 .navbar-menu {
   display: flex;
-  list-style: none;
-  margin: 0;
+  gap: 6px;
+  margin: 0 0 0 auto;
   padding: 0;
-  gap: 2rem;
+  list-style: none;
 }
 
 .navbar-menu a {
-  color: white;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--gb-text-muted);
+  font-size: 0.9rem;
+}
+
+.navbar-menu a:hover {
+  color: var(--gb-heading);
 }
 
 .navbar-menu a.router-link-active {
-  background: #555;
-  border-radius: 4px;
+  background: rgba(179, 199, 255, 0.1);
+  color: var(--gb-accent);
 }
 
-@media (max-width: 768px) {
+.navbar-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: 1px solid var(--gb-border);
+  border-radius: 8px;
+  background: var(--gb-surface);
+  cursor: pointer;
+}
+
+.navbar-toggle span {
+  width: 17px;
+  height: 1px;
+  display: block;
+  margin: 4px auto;
+  background: var(--gb-text);
+}
+
+@media (max-width: 700px) {
+  .navbar-container {
+    width: min(100% - 28px, 1200px);
+  }
+
   .navbar-toggle {
     display: block;
   }
 
   .navbar-menu {
     display: none;
-    flex-direction: column;
     position: absolute;
-    top: 60px;
+    top: 70px;
     left: 0;
     right: 0;
-    background: #333;
-    padding: 1rem;
+    flex-direction: column;
+    padding: 12px 14px 16px;
+    border-bottom: 1px solid var(--gb-border);
+    background: var(--gb-background-deep);
   }
 
   .navbar-menu.open {

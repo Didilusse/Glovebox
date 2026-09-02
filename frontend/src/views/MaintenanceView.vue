@@ -157,10 +157,19 @@ function handleBack() {
 
 <style scoped>
 .maintenance-page {
+  width: min(100% - 40px, 1200px);
+  min-height: calc(100vh - 70px);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px;
+  gap: 28px;
+  padding: clamp(40px, 7vw, 72px) 0 80px;
 }
 
+@media (max-width: 600px) {
+  .maintenance-page {
+    width: min(100% - 28px, 1200px);
+    padding-top: 36px;
+  }
+}
 </style>

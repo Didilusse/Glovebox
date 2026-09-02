@@ -206,22 +206,23 @@ function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 12, 15, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(8, 11, 15, 0.75);
+  backdrop-filter: blur(6px);
   padding: 24px;
   z-index: 1000;
 }
 
 .panel {
   width: min(100%, 640px);
-  background: #333;
-  border-radius: 12px;
+  border: 1px solid var(--gb-border);
+  background: var(--gb-surface);
+  border-radius: 16px;
   padding: 24px;
   box-shadow: 0 12px 30px rgba(16, 24, 40, 0.4);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  color: #e6edf3;
+  color: var(--gb-text);
 }
 
 .panel-header {
@@ -231,17 +232,27 @@ function handleSubmit() {
   gap: 12px;
 }
 
+.panel-header h2 {
+  color: var(--gb-heading);
+  font-weight: 600;
+}
+
 .close-button {
-  border: 1px solid #1e1e1e;
-  background: #1e1e1e;
+  border: 1px solid var(--gb-border);
+  background: transparent;
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  color: #cbd5e1;
+  color: var(--gb-text-muted);
+}
+
+.close-button:hover {
+  border-color: var(--gb-border-strong);
+  color: var(--gb-heading);
 }
 
 .note {
-  color: #94a3b8;
+  color: var(--gb-text-muted);
   margin-top: 8px;
 }
 
@@ -260,18 +271,25 @@ function handleSubmit() {
 
 .field label {
   font-size: 0.85rem;
-  color: #cbd5e1;
+  color: var(--gb-text);
 }
 
 .field input,
 .field textarea,
 .field select {
   padding: 10px 12px;
-  border: 1px solid #212020;
+  border: 1px solid var(--gb-border);
   border-radius: 8px;
-  background: #1e1e1e;
-  color: #e6edf3;
+  background: var(--gb-background-deep);
+  color: var(--gb-heading);
   outline: none;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--gb-accent);
+  box-shadow: 0 0 0 3px rgba(179, 199, 255, 0.1);
 }
 
 .actions {
@@ -282,30 +300,52 @@ function handleSubmit() {
 }
 
 .primary {
-  background: linear-gradient(180deg,#0ea5a7,#0284c7);
-  color: #0b1220;
+  background: var(--gb-accent);
+  color: #141820;
   border: none;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 999px;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.primary:hover {
+  background: var(--gb-accent-hover);
 }
 
 .secondary {
   background: transparent;
-  border: 1px solid #263343;
+  border: 1px solid var(--gb-border-strong);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
-  color: #cbd5e1;
+  color: var(--gb-text);
+}
+
+.secondary:hover {
+  border-color: var(--gb-accent);
+  color: var(--gb-accent);
 }
 
 .error-text {
-  color: red;
+  color: var(--gb-danger);
   font-size: 0.875rem;
   display: block;
   margin-top: 4px;
 }
 .input-error {
-  border-color: red;
+  border-color: var(--gb-danger) !important;
+}
+
+@media (max-width: 600px) {
+  .overlay {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 14px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
 }
 </style>

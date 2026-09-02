@@ -28,14 +28,17 @@ defineProps({
 </script>
 
 <style scoped>
-  .maintenance-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+.maintenance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 
-  .empty-state {
-    color: #666;
-    padding: 12px 0;
-  }
+.empty-state {
+  padding: 32px;
+  border: 1px dashed var(--gb-border-strong);
+  border-radius: 16px;
+  color: var(--gb-text-muted);
+  text-align: center;
+}
 </style>

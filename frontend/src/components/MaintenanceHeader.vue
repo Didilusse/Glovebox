@@ -25,21 +25,28 @@ defineEmits(['add'])
 
 .title {
   margin: 0;
-  font-size: 1.75rem;
+  color: var(--gb-heading);
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 700;
 }
 
 .subtitle {
   margin: 4px 0 0;
-  color: #666;
+  color: var(--gb-text-muted);
 }
 
 .add-button {
   border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 10px 16px;
-  background: #222;
-  color: white;
+  background: var(--gb-accent);
+  color: #141820;
+  font-weight: 700;
   cursor: pointer;
   margin-left: auto;
+}
+
+.add-button:hover {
+  background: var(--gb-accent-hover);
 }
 </style>
