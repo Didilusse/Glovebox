@@ -4,6 +4,7 @@ from backend.config import settings
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog
 from backend.models.mod import ModItem
+from backend.migrations import apply_default_migrations
 
 client = None
 client_factory = AsyncIOMotorClient
@@ -20,6 +21,7 @@ async def init_db():
             ModItem
         ]
     )
+    await apply_default_migrations(client[settings.database_name])
 
 
 async def close_db():

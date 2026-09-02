@@ -58,3 +58,20 @@ Run backend tests with pytest from the repo root:
 ```bash
 pytest
 ```
+
+Real-MongoDB tests use a separate `glovebox_test` database by default. Set
+`TEST_DATABASE_NAME` to override it; never point it at your application database.
+
+## Database migrations
+
+MongoDB preserves existing documents when the backend is updated. On startup,
+Glovebox backfills missing fields that have a model default, without replacing
+an existing value. For example, add an optional car field with a default:
+
+```python
+nickname: str | None = None
+```
+
+The next backend startup adds `nickname: null` to existing car documents. A
+new required field or a data transformation needs an explicit migration before
+deployment; do not use a default to invent data that is not known.

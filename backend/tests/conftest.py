@@ -23,10 +23,13 @@ def api_client(monkeypatch):
     mongo_client = MongoClient(uri, serverSelectionTimeoutMS=500)
     mongo_client.admin.command("ping")
 
-    database = mongo_client[settings.database_name]
+    test_database_name = os.getenv("TEST_DATABASE_NAME", f"{settings.database_name}_test")
+    monkeypatch.setattr(settings, "database_name", test_database_name)
+    database = mongo_client[test_database_name]
     database.cars.delete_many({})
     database.maintenance_logs.delete_many({})
     database.mods.delete_many({})
+    database.schema_migrations.delete_many({})
 
     with TestClient(app) as client:
         yield client
@@ -34,4 +37,5 @@ def api_client(monkeypatch):
     database.cars.delete_many({})
     database.maintenance_logs.delete_many({})
     database.mods.delete_many({})
+    database.schema_migrations.delete_many({})
     mongo_client.close()
