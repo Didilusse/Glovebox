@@ -40,9 +40,12 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./data/db:/data/db
+      - glovebox-mongodb-data:/data/db
     networks:
       - glovebox-network
+
+volumes:
+  glovebox-mongodb-data:
 
 networks:
   glovebox-network:

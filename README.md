@@ -6,13 +6,13 @@ A simple vehicle tracker website (frontend + backend). Think of it like your dig
 
 - Backend: FastAPI + Beanie (MongoDB)
 - Frontend: Vite + Vue 3
-- Data: local Mongo files under `data/db`
+- Data: persistent Docker volume by default, or an externally configured MongoDB instance
 
 ## Requirements
 
 - Python 3.11 or newer
 - Node.js 16+ (for frontend)
-- A running MongoDB instance (or local `data/db` files if configured)
+- A running MongoDB instance
 
 ## Quick start (backend)
 
@@ -75,3 +75,10 @@ nickname: str | None = None
 The next backend startup adds `nickname: null` to existing car documents. A
 new required field or a data transformation needs an explicit migration before
 deployment; do not use a default to invent data that is not known.
+
+## Docker data
+
+Docker Compose stores MongoDB data in the persistent `glovebox-mongodb-data`
+volume. `docker compose down` and `docker compose up -d` preserve it. Do not
+run `docker compose down -v` unless you intentionally want to permanently
+delete all local database data.
