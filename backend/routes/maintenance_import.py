@@ -17,6 +17,8 @@ from backend.services.maintenance import create_imported_logs
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_IMPORT_RECORDS = 100
+MAX_WORK_DONE_LENGTH = 500
+MAX_NOTES_LENGTH = 5000
 router = APIRouter(prefix="/cars/{car_id}/logs/import", tags=["Maintenance Import"])
 
 
@@ -63,7 +65,7 @@ async def preview_carfax_import(
             record.date_of_service,
             record.mileage,
             record.service_provider,
-            record.work_done,
+            _prepare_work_description(record.work_done)[0],
         )
         for record in report.records
     ]
@@ -115,12 +117,13 @@ def serialize_import_records(report, existing_keys: set[str] | None = None):
     existing_keys = existing_keys or set()
     records = []
     for record in report.records:
+        work_done, notes, description_warning = _prepare_work_description(record.work_done)
         key = make_source_record_key(
             report.vin,
             record.date_of_service,
             record.mileage,
             record.service_provider,
-            record.work_done,
+            work_done,
         )
         records.append(
             {
@@ -128,18 +131,33 @@ def serialize_import_records(report, existing_keys: set[str] | None = None):
                 "mileage": record.mileage,
                 "cost": None,
                 "done_by": "shop",
-                "work_done": record.work_done,
+                "work_done": work_done,
                 "category": record.category,
-                "notes": "Imported from CARFAX",
+                "notes": notes,
                 "service_provider": record.service_provider,
                 "source_record_key": key,
                 "source_page": record.page,
-                "warnings": record.warnings,
+                "warnings": record.warnings + ([description_warning] if description_warning else []),
                 "duplicate": key in existing_keys,
             }
         )
 
     return records
+
+
+def _prepare_work_description(work_done: str) -> tuple[str, str, str | None]:
+    if len(work_done) <= MAX_WORK_DONE_LENGTH:
+        return work_done, "Imported from CARFAX", None
+
+    shortened = work_done[:MAX_WORK_DONE_LENGTH - 3].rsplit("; ", 1)[0].rstrip()
+    if not shortened:
+        shortened = work_done[:MAX_WORK_DONE_LENGTH - 3].rstrip()
+    notes = f"Imported from CARFAX. Full work description: {work_done}"
+    return (
+        f"{shortened}...",
+        notes[:MAX_NOTES_LENGTH],
+        "Work description was shortened to fit the maintenance title; additional text is in notes",
+    )
 
 
 def serialize_report_vehicle(report):
