@@ -171,7 +171,14 @@ function reset() {
 async function responseMessage(response, fallback) {
   try {
     const body = await response.json()
-    return typeof body.detail === 'string' ? body.detail : fallback
+    if (typeof body.detail === 'string') return body.detail
+    if (Array.isArray(body.detail)) {
+      return body.detail.map(({ loc, msg }) => {
+        const field = loc?.filter(part => part !== 'body').join('.')
+        return field ? `${field}: ${msg}` : msg
+      }).join('; ')
+    }
+    return fallback
   } catch {
     return fallback
   }
