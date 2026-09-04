@@ -24,3 +24,27 @@ def test_default_migration_backfills_missing_car_fields_without_overwriting_valu
         assert await database.schema_migrations.find_one({"_id": "model-defaults"})
 
     asyncio.run(run_test())
+
+
+def test_default_migration_backfills_mod_planning_defaults_without_overwriting_values():
+    async def run_test():
+        database = AsyncMongoMockClient().glovebox
+        await database.mods.insert_many([
+            {"name": "Missing defaults"},
+            {
+                "name": "Existing values",
+                "priority": "high",
+                "install_method": "shop",
+            },
+        ])
+
+        await apply_default_migrations(database)
+        missing = await database.mods.find_one({"name": "Missing defaults"})
+        existing = await database.mods.find_one({"name": "Existing values"})
+
+        assert missing["priority"] == "medium"
+        assert missing["install_method"] == "undecided"
+        assert existing["priority"] == "high"
+        assert existing["install_method"] == "shop"
+
+    asyncio.run(run_test())
