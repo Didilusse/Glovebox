@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import close_db, init_db
-from backend.routes import carfax_car_import, maintenance_import, maintenance_logs, car_route, stats, reminder, mods
+from backend.routes import carfax_car_import, maintenance_import, maintenance_logs, car_route, stats, reminder, mods, nhtsa
 
 
 @asynccontextmanager
@@ -31,3 +31,4 @@ app.include_router(maintenance_import.router)
 app.include_router(reminder.router)
 app.include_router(stats.router)
 app.include_router(mods.router)
+app.include_router(nhtsa.router)

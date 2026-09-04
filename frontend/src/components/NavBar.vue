@@ -28,6 +28,9 @@
         <li>
           <router-link :to="modsLink" @click="isMobileMenuOpen = false">Mods</router-link>
         </li>
+        <li>
+          <router-link :to="nhtsaLink" @click="isMobileMenuOpen = false">Safety</router-link>
+        </li>
       </ul>
     </div>
   </nav>
@@ -42,6 +45,7 @@ const route = useRoute()
 const carDetailLink = computed(() => route.params.carId ? `/car/${route.params.carId}` : '/car')
 const maintenanceLink = computed(() => route.params.carId ? `/maintenance/${route.params.carId}` : '/maintenance')
 const modsLink = computed(() => route.params.carId ? `/mods/${route.params.carId}` : '/mods')
+const nhtsaLink = computed(() => route.params.carId ? `/nhtsa/${route.params.carId}` : '/nhtsa')
 </script>
 
 <style scoped>
