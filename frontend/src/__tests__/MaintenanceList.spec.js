@@ -5,7 +5,7 @@ import MaintenanceList from '../components/MaintenanceList.vue'
 
 describe('MaintenanceList', () => {
   it('distinguishes an empty history from an empty search result', () => {
-    expect(mount(MaintenanceList).text()).toContain('No maintenance logs yet.')
-    expect(mount(MaintenanceList, { props: { hasRecords: true } }).text()).toContain('No maintenance records match your search.')
+    expect(mount(MaintenanceList).text()).toContain('No service history yet')
+    expect(mount(MaintenanceList, { props: { hasRecords: true } }).text()).toContain('No matching service records')
   })
 })

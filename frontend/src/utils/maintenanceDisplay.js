@@ -5,11 +5,13 @@ export const maintenanceSortOptions = [
   { value: 'cost-low', label: 'Cost: lowest first' }
 ]
 
-export function filterAndSortMaintenances(maintenances, search, sort) {
+export function filterAndSortMaintenances(maintenances, search, sort, category = 'all') {
   const query = search.trim().toLowerCase()
-  const filtered = query
-    ? maintenances.filter(log => searchableLog(log).includes(query))
-    : [...maintenances]
+  const filtered = maintenances.filter(log => {
+    const matchesSearch = !query || searchableLog(log).includes(query)
+    const matchesCategory = category === 'all' || log.category === category
+    return matchesSearch && matchesCategory
+  })
 
   return filtered.sort((left, right) => {
     if (sort === 'cost-high' || sort === 'cost-low') {

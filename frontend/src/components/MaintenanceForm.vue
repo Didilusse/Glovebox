@@ -1,99 +1,99 @@
 <template>
   <div class="overlay" @click.self="$emit('close')">
-    <section class="panel">
-      <div class="panel-header">
-        <h2>{{ isEditMode ? 'Edit maintenance' : 'Add maintenance' }}</h2>
-
-        <button type="button" class="close-button" @click="$emit('close')">Close</button>
-      </div>
-
-      <form class="form-section" @submit.prevent="handleSubmit">
-        <div class="form-row">
-          <div class="field">
-            <label for="date">Date</label>
-            <input id="date" type="date" v-model="date" />
-            <span v-if="isSubmitted && !date" class="error-text">Date is required.</span>
-          </div>
-
-          <div class="field">
-            <label for="mileage">Mileage</label>
-            <input id="mileage" type="number" v-model.number="mileage" :class="{ 'input-error': isSubmitted && (mileage === null || mileage === '') }" />
-            <span v-if="isSubmitted && (mileage === null || mileage === '')" class="error-text">Mileage is required.</span>
-          </div>
-
-          <div class="field">
-            <label for="cost">Cost</label>
-            <input id="cost" type="number" step="0.01" v-model.number="cost" :class="{ 'input-error': isSubmitted && (cost === null || cost === '') }" />
-            <span v-if="isSubmitted && (cost === null || cost === '')" class="error-text">Cost is required.</span>
-          </div>
-
-          <div class="field">
-            <label for="done_by">Done by</label>
-            <select id="done_by" v-model="done_by" :class="{ 'input-error': isSubmitted && !done_by }">
-              <option value="self">Self</option>
-              <option value="shop">Shop</option>
-            </select>
-            <span v-if="isSubmitted && !done_by" class="error-text">Who performed the work is required.</span>
-          </div>
-
-          <div class="field">
-            <label for="category">Category</label>
-            <select id="category" v-model="category" :class="{ 'input-error': isSubmitted && !category }">
-              <option value="engine">Engine</option>
-              <option value="suspension">Suspension</option>
-              <option value="exterior">Exterior</option>
-              <option value="interior">Interior</option>
-              <option value="wheels">Wheels</option>
-              <option value="brakes">Brakes</option>
-              <option value="exhaust">Exhaust</option>
-              <option value="fluids">Fluids</option>
-              <option value="other">Other</option>
-            </select>
-            <span v-if="isSubmitted && !category" class="error-text">Category is required.</span>
-          </div>
+    <section class="panel" role="dialog" aria-modal="true" aria-labelledby="maintenance-form-title">
+      <header>
+        <div>
+          <span>{{ isEditMode ? 'Update record' : 'New record' }}</span>
+          <h2 id="maintenance-form-title">{{ isEditMode ? 'Edit service' : 'Log completed service' }}</h2>
         </div>
+        <button type="button" class="close-button" :disabled="isSaving" @click="$emit('close')">Close</button>
+      </header>
 
-        <div class="form-row">
-          <div class="field" style="flex:1 1 100%">
-            <label for="work_done">Work done</label>
-            <input id="work_done" v-model="work_done" :class="{ 'input-error': isSubmitted && !work_done.trim() }" />
-            <span v-if="isSubmitted && !work_done.trim()" class="error-text">Work done is required.</span>
+      <form @submit.prevent="handleSubmit">
+        <section class="form-group">
+          <div class="section-heading">
+            <span>01</span>
+            <div><h3>Work completed</h3><p>Record what was done and the vehicle state at the time.</p></div>
           </div>
-        </div>
 
-        <div class="form-row">
-          <div class="field" style="flex:1 1 100%">
-            <label for="notes">Notes</label>
-            <textarea id="notes" rows="4" v-model="notes" :class="{ 'input-error': isSubmitted && !notes.trim() }"></textarea>
-            <span v-if="isSubmitted && !notes.trim() && !isEditMode" class="error-text">Notes are required.</span>
+          <div class="field full">
+            <label for="work_done">Service performed</label>
+            <input id="work_done" v-model="workDone" maxlength="500" placeholder="e.g. Engine oil and filter changed" :class="{ invalid: submitted && !workDone.trim() }" />
+            <small v-if="submitted && !workDone.trim()" class="error">Describe the completed work.</small>
           </div>
-        </div>
 
-        <div class="form-row">
-          <div class="field">
-            <label>
-              <input type="checkbox" v-model="createReminder" /> Add reminder
+          <div class="field-grid three-columns">
+            <div class="field">
+              <label for="date">Service date</label>
+              <input id="date" v-model="serviceDate" type="date" :class="{ invalid: submitted && !serviceDate }" />
+              <small v-if="submitted && !serviceDate" class="error">Date is required.</small>
+            </div>
+            <div class="field">
+              <label for="mileage">Odometer</label>
+              <div class="input-suffix"><input id="mileage" v-model.number="mileage" type="number" min="0" :class="{ invalid: submitted && !hasMileage }" /><span>mi</span></div>
+              <small v-if="submitted && !hasMileage" class="error">Mileage is required.</small>
+            </div>
+            <div class="field">
+              <label for="cost">Total cost</label>
+              <div class="input-prefix"><span>$</span><input id="cost" v-model.number="cost" type="number" min="0" step="0.01" :class="{ invalid: submitted && !hasCost }" /></div>
+              <small v-if="submitted && !hasCost" class="error">Cost is required.</small>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="category">Category</label>
+              <select id="category" v-model="category">
+                <option v-for="option in categories" :key="option" :value="option">{{ titleCase(option) }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="done_by">Performed by</label>
+              <select id="done_by" v-model="doneBy">
+                <option value="self">Owner / DIY</option>
+                <option value="shop">Service shop</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field full">
+            <label for="notes">Parts and notes <small>Optional</small></label>
+            <textarea id="notes" v-model="notes" rows="3" maxlength="5000" placeholder="Parts used, observations, warranty details..." />
+          </div>
+        </section>
+
+        <section class="form-group reminder-group" :class="{ active: createReminder }">
+          <div class="reminder-toggle">
+            <div class="section-heading">
+              <span>02</span>
+              <div><h3>Schedule the next service</h3><p>Get a reminder by time, mileage, or whichever comes first.</p></div>
+            </div>
+            <label class="switch">
+              <input v-model="createReminder" type="checkbox" />
+              <span aria-hidden="true"></span>
+              {{ createReminder ? 'On' : 'Off' }}
             </label>
           </div>
-        </div>
 
-        <div class="form-row" v-if="createReminder">
-          <div class="field">
-            <label for="interval_months">Interval (months)</label>
-            <input id="interval_months" type="number" v-model.number="interval_months" min="0" />
-            <span v-if="isSubmitted && createReminder && (interval_months === null || interval_months === '')" class="error-text">Provide months or miles.</span>
+          <div v-if="createReminder" class="field-grid reminder-fields">
+            <div class="field">
+              <label for="interval_months">Time interval</label>
+              <div class="input-suffix"><input id="interval_months" v-model.number="intervalMonths" type="number" min="1" placeholder="e.g. 6" /><span>months</span></div>
+            </div>
+            <div class="field">
+              <label for="interval_miles">Mileage interval</label>
+              <div class="input-suffix"><input id="interval_miles" v-model.number="intervalMiles" type="number" min="1" placeholder="e.g. 5000" /><span>mi</span></div>
+            </div>
+            <small v-if="submitted && !hasInterval" class="error interval-error">Enter a time or mileage interval.</small>
           </div>
-
-          <div class="field">
-            <label for="interval_miles">Interval (miles)</label>
-            <input id="interval_miles" type="number" v-model.number="interval_miles" min="0" />
-            <span v-if="isSubmitted && createReminder && (interval_miles === null || interval_miles === '')" class="error-text">Provide months or miles.</span>
-          </div>
-        </div>
+        </section>
 
         <div class="actions">
-          <button type="button" class="secondary" @click="$emit('close')">Cancel</button>
-          <button type="submit" class="primary">{{ isEditMode ? 'Save changes' : 'Save' }}</button>
+          <button type="button" class="secondary" :disabled="isSaving" @click="$emit('close')">Cancel</button>
+          <button type="submit" class="primary" :disabled="isSaving">
+            <span v-if="isSaving" class="button-spinner"></span>
+            {{ isSaving ? 'Saving...' : isEditMode ? 'Save changes' : 'Save service' }}
+          </button>
         </div>
       </form>
     </section>
@@ -104,248 +104,125 @@
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
-  mode: {
-    type: String,
-    default: 'create'
-  },
-  maintenance: {
-    type: Object,
-    default: null
-  }
+  mode: { type: String, default: 'create' },
+  maintenance: { type: Object, default: null },
+  isSaving: { type: Boolean, default: false }
 })
-
 const emit = defineEmits(['close', 'created', 'updated'])
+const categories = ['engine', 'suspension', 'exterior', 'interior', 'wheels', 'brakes', 'exhaust', 'fluids', 'other']
 
-const isEditMode = computed(() => props.mode === 'edit')
-
-const date = ref('')
+const serviceDate = ref('')
 const mileage = ref(null)
 const cost = ref(null)
-const done_by = ref('self')
+const doneBy = ref('self')
 const category = ref('other')
-const work_done = ref('')
+const workDone = ref('')
 const notes = ref('')
 const createReminder = ref(false)
-const interval_months = ref(null)
-const interval_miles = ref(null)
-const isSubmitted = ref(false)
+const intervalMonths = ref(null)
+const intervalMiles = ref(null)
+const submitted = ref(false)
 
-function getInitialState(maintenance) {
-  return {
-    date: maintenance?.date_of_service ?? new Date().toISOString().slice(0, 10),
-    mileage: maintenance?.mileage ?? null,
-    cost: maintenance?.cost ?? null,
-    done_by: maintenance?.done_by ?? 'self',
-    category: maintenance?.category ?? 'other',
-    work_done: maintenance?.work_done ?? '',
-    notes: maintenance?.notes ?? '',
-    createReminder:
-      (maintenance?.interval_months !== null && maintenance?.interval_months !== undefined) ||
-      (maintenance?.interval_miles !== null && maintenance?.interval_miles !== undefined),
-    interval_months: maintenance?.interval_months ?? null,
-    interval_miles: maintenance?.interval_miles ?? null
-  }
-}
+const isEditMode = computed(() => props.mode === 'edit')
+const hasMileage = computed(() => isEditMode.value || (mileage.value !== null && mileage.value !== '' && Number(mileage.value) >= 0))
+const hasCost = computed(() => isEditMode.value || (cost.value !== null && cost.value !== '' && Number(cost.value) >= 0))
+const hasInterval = computed(() => !createReminder.value || isPositive(intervalMonths.value) || isPositive(intervalMiles.value))
 
 watch(
   () => props.maintenance,
   (maintenance) => {
-    const initialState = getInitialState(maintenance)
-    date.value = initialState.date
-    mileage.value = initialState.mileage
-    cost.value = initialState.cost
-    done_by.value = initialState.done_by
-    category.value = initialState.category
-    work_done.value = initialState.work_done
-    notes.value = initialState.notes
-    createReminder.value = initialState.createReminder
-    interval_months.value = initialState.interval_months
-    interval_miles.value = initialState.interval_miles
-    isSubmitted.value = false
+    serviceDate.value = maintenance?.date_of_service ?? new Date().toISOString().slice(0, 10)
+    mileage.value = maintenance?.mileage ?? null
+    cost.value = maintenance?.cost ?? null
+    doneBy.value = maintenance?.done_by ?? 'self'
+    category.value = maintenance?.category ?? 'other'
+    workDone.value = maintenance?.work_done ?? ''
+    notes.value = maintenance?.notes ?? ''
+    createReminder.value = maintenance?.interval_months != null || maintenance?.interval_miles != null
+    intervalMonths.value = maintenance?.interval_months ?? null
+    intervalMiles.value = maintenance?.interval_miles ?? null
+    submitted.value = false
   },
   { immediate: true }
 )
 
 function handleSubmit() {
-  isSubmitted.value = true
-
-  const hasMileage = isEditMode.value || !(mileage.value === null || mileage.value === '')
-  const hasCost = isEditMode.value || !(cost.value === null || cost.value === '')
-  const hasWork = Boolean(work_done.value && work_done.value.trim())
-  const hasDoneBy = Boolean(done_by.value)
-  const hasCategory = Boolean(category.value)
-  const hasDate = Boolean(date.value)
-  const hasNotes = isEditMode.value ? true : Boolean(notes.value && notes.value.trim())
-  const hasInterval = !createReminder.value || ((interval_months.value !== null && interval_months.value !== '') || (interval_miles.value !== null && interval_miles.value !== ''))
-
-  if (!hasMileage || !hasCost || !hasWork || !hasDoneBy || !hasCategory || !hasDate || !hasNotes || !hasInterval) {
-    return
-  }
+  submitted.value = true
+  if (!serviceDate.value || !workDone.value.trim() || !hasMileage.value || !hasCost.value || !hasInterval.value) return
 
   const payload = {
-    date_of_service: date.value,
-    mileage: mileage.value === null || mileage.value === '' ? null : Number(mileage.value),
-    cost: cost.value === null || cost.value === '' ? null : Number(cost.value),
-    done_by: done_by.value,
+    date_of_service: serviceDate.value,
+    mileage: numberOrNull(mileage.value),
+    cost: numberOrNull(cost.value),
+    done_by: doneBy.value,
     category: category.value,
-    interval_months: createReminder.value ? (interval_months.value !== null && interval_months.value !== '' ? Number(interval_months.value) : null) : null,
-    interval_miles: createReminder.value ? (interval_miles.value !== null && interval_miles.value !== '' ? Number(interval_miles.value) : null) : null,
-    work_done: work_done.value.trim(),
-    notes: notes.value.trim()
+    interval_months: createReminder.value ? positiveNumberOrNull(intervalMonths.value) : null,
+    interval_miles: createReminder.value ? positiveNumberOrNull(intervalMiles.value) : null,
+    work_done: workDone.value.trim(),
+    notes: notes.value.trim() || null
   }
-
   emit(isEditMode.value ? 'updated' : 'created', payload)
 }
 
+function isPositive(value) { return value !== null && value !== '' && Number(value) > 0 }
+function numberOrNull(value) { return value === null || value === '' ? null : Number(value) }
+function positiveNumberOrNull(value) { return isPositive(value) ? Number(value) : null }
+function titleCase(value) { return value.charAt(0).toUpperCase() + value.slice(1) }
 </script>
 
 <style scoped>
-.overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(8, 11, 15, 0.75);
-  backdrop-filter: blur(6px);
-  padding: 24px;
-  z-index: 1000;
-}
+.overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; background: rgba(8, 11, 15, .8); backdrop-filter: blur(7px); }
+.panel { width: min(100%, 720px); max-height: calc(100vh - 48px); padding: 24px; overflow-y: auto; border: 1px solid rgba(179, 199, 255, .14); border-radius: 14px; background: #232930; box-shadow: 0 24px 70px rgba(0, 0, 0, .42); }
+header, .actions, .reminder-toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+header > div > span { color: var(--gb-accent); font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+h2 { margin-top: 2px; color: var(--gb-heading); font-size: 1.4rem; font-weight: 680; letter-spacing: -.02em; }
+.close-button, .secondary, .primary { border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+.close-button, .secondary { border: 1px solid var(--gb-border-strong); background: transparent; color: var(--gb-text-muted); }
+.close-button:hover:not(:disabled), .secondary:hover:not(:disabled) { border-color: var(--gb-accent); color: var(--gb-heading); }
+form { display: flex; flex-direction: column; gap: 24px; margin-top: 24px; }
+.form-group { display: flex; flex-direction: column; gap: 14px; padding-bottom: 24px; border-bottom: 1px solid rgba(179, 199, 255, .1); }
+.section-heading { display: flex; align-items: flex-start; gap: 10px; }
+.section-heading > span { padding-top: 2px; color: var(--gb-accent); font-size: .68rem; font-weight: 700; }
+.section-heading h3 { color: var(--gb-heading); font-size: .9rem; font-weight: 650; }
+.section-heading p { margin-top: 1px; color: var(--gb-text-muted); font-size: .74rem; }
+.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.three-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+label { color: var(--gb-text); font-size: .8rem; font-weight: 600; }
+label small { margin-left: 3px; color: var(--gb-text-muted); font-size: .68rem; font-weight: 400; }
+input, select, textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px 11px; border: 1px solid rgba(179, 199, 255, .13); border-radius: 8px; outline: none; background: #171c22; color: var(--gb-heading); font: inherit; font-size: .84rem; }
+textarea { resize: vertical; }
+input:focus, select:focus, textarea:focus { border-color: var(--gb-accent); box-shadow: 0 0 0 3px rgba(179, 199, 255, .1); }
+.input-suffix, .input-prefix { position: relative; }
+.input-suffix input { padding-right: 42px; }
+.input-prefix input { padding-left: 26px; }
+.input-suffix span, .input-prefix span { position: absolute; top: 50%; color: var(--gb-text-muted); font-size: .72rem; pointer-events: none; }
+.input-suffix span { right: 10px; transform: translateY(-50%); }
+.input-prefix span { left: 11px; transform: translateY(-50%); }
+.invalid { border-color: var(--gb-danger); }
+.error { color: var(--gb-danger); font-size: .74rem; }
+.reminder-group { padding: 14px; border: 1px solid rgba(179, 199, 255, .1); border-radius: 9px; background: #1c2128; }
+.reminder-group.active { border-color: rgba(179, 199, 255, .22); }
+.switch { display: flex; align-items: center; gap: 7px; color: var(--gb-text-muted); font-size: .72rem; cursor: pointer; }
+.switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.switch > span { position: relative; width: 34px; height: 19px; border-radius: 99px; background: #3a424d; transition: background 150ms; }
+.switch > span::after { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: #aeb7c5; content: ''; transition: transform 150ms, background 150ms; }
+.switch input:checked + span { background: #647caf; }
+.switch input:checked + span::after { transform: translateX(15px); background: #fff; }
+.switch input:focus-visible + span { outline: 2px solid var(--gb-accent); outline-offset: 2px; }
+.reminder-fields { padding-top: 4px; }
+.interval-error { grid-column: 1 / -1; }
+.actions { justify-content: flex-end; }
+.primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; background: var(--gb-accent); color: #141820; font-weight: 700; }
+.primary:hover:not(:disabled) { background: var(--gb-accent-hover); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.button-spinner { width: 14px; height: 14px; border: 2px solid rgba(20, 24, 32, .3); border-top-color: #141820; border-radius: 50%; animation: spin 700ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.panel {
-  width: min(100%, 640px);
-  border: 1px solid var(--gb-border);
-  background: var(--gb-surface);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.4);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  color: var(--gb-text);
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.panel-header h2 {
-  color: var(--gb-heading);
-  font-weight: 600;
-}
-
-.close-button {
-  border: 1px solid var(--gb-border);
-  background: transparent;
-  border-radius: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  color: var(--gb-text-muted);
-}
-
-.close-button:hover {
-  border-color: var(--gb-border-strong);
-  color: var(--gb-heading);
-}
-
-.note {
-  color: var(--gb-text-muted);
-  margin-top: 8px;
-}
-
-.form-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1 1 220px;
-}
-
-.field label {
-  font-size: 0.85rem;
-  color: var(--gb-text);
-}
-
-.field input,
-.field textarea,
-.field select {
-  padding: 10px 12px;
-  border: 1px solid var(--gb-border);
-  border-radius: 8px;
-  background: var(--gb-background-deep);
-  color: var(--gb-heading);
-  outline: none;
-}
-
-.field input:focus,
-.field textarea:focus,
-.field select:focus {
-  border-color: var(--gb-accent);
-  box-shadow: 0 0 0 3px rgba(179, 199, 255, 0.1);
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.primary {
-  background: var(--gb-accent);
-  color: #141820;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.primary:hover {
-  background: var(--gb-accent-hover);
-}
-
-.secondary {
-  background: transparent;
-  border: 1px solid var(--gb-border-strong);
-  padding: 10px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-  color: var(--gb-text);
-}
-
-.secondary:hover {
-  border-color: var(--gb-accent);
-  color: var(--gb-accent);
-}
-
-.error-text {
-  color: var(--gb-danger);
-  font-size: 0.875rem;
-  display: block;
-  margin-top: 4px;
-}
-.input-error {
-  border-color: var(--gb-danger) !important;
-}
-
-@media (max-width: 600px) {
-  .overlay {
-    align-items: flex-start;
-    overflow-y: auto;
-    padding: 14px;
-  }
-
-  .panel {
-    padding: 20px;
-  }
+@media (max-width: 650px) {
+  .overlay { align-items: flex-start; padding: 0; }
+  .panel { max-height: none; min-height: 100vh; padding: 20px 16px; border: 0; border-radius: 0; }
+  .field-grid, .three-columns { grid-template-columns: 1fr; }
+  .reminder-toggle { align-items: flex-start; }
 }
 </style>

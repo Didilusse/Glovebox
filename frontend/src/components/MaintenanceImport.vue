@@ -212,10 +212,10 @@ async function responseMessage(response, fallback) {
   width: min(1080px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
-  border: 1px solid var(--gb-border-strong);
-  border-radius: 24px;
-  background: var(--gb-surface);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(179, 199, 255, .14);
+  border-radius: 14px;
+  background: #232930;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
 }
 
 .panel-header,
@@ -229,19 +229,19 @@ async function responseMessage(response, fallback) {
 }
 
 .panel-header { padding: 28px 30px 22px; border-bottom: 1px solid var(--gb-border); }
-.panel-header h2 { margin: 2px 0 5px; color: var(--gb-heading); font-size: clamp(1.45rem, 4vw, 2rem); }
+.panel-header h2 { margin: 2px 0 5px; color: var(--gb-heading); font-size: clamp(1.3rem, 3vw, 1.5rem); font-weight: 680; letter-spacing: -.02em; }
 .eyebrow, .strip-label { margin: 0; color: var(--gb-accent); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .intro { margin: 0; color: var(--gb-text-muted); }
 .upload-stage, .review-stage { padding: 26px 30px 30px; }
 
 .drop-zone {
-  min-height: 250px;
+  min-height: 220px;
   display: grid;
   place-content: center;
   gap: 8px;
   padding: 30px;
-  border: 1px dashed var(--gb-border-strong);
-  border-radius: 18px;
+  border: 1px dashed rgba(179, 199, 255, .2);
+  border-radius: 10px;
   text-align: center;
   cursor: pointer;
   background: rgba(179, 199, 255, .025);
@@ -251,10 +251,10 @@ async function responseMessage(response, fallback) {
 .drop-title { color: var(--gb-heading); font-size: 1.15rem; font-weight: 700; }
 .drop-copy, .vin, .selection-copy { color: var(--gb-text-muted); font-size: .86rem; }
 
-.report-strip { padding: 18px; border-radius: 16px; background: rgba(179, 199, 255, .055); }
+.report-strip { padding: 18px; border: 1px solid rgba(179, 199, 255, .1); border-radius: 10px; background: #1c2128; }
 .report-strip > div:first-child { display: grid; gap: 4px; }
 .metrics { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.metrics span { padding: 7px 10px; border: 1px solid var(--gb-border); border-radius: 999px; color: var(--gb-text-muted); font-size: .78rem; }
+.metrics span { padding: 2px 10px; border-left: 1px solid rgba(179, 199, 255, .12); color: var(--gb-text-muted); font-size: .76rem; }
 .metrics strong { color: var(--gb-heading); }
 .report-warning, .error { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; }
 .report-warning { border: 1px solid rgba(218, 166, 65, .35); color: #e3c27f; background: rgba(218, 166, 65, .08); }
@@ -263,7 +263,7 @@ async function responseMessage(response, fallback) {
 .selection-bar { padding: 20px 2px 12px; color: var(--gb-text-muted); }
 
 .records { display: grid; gap: 10px; }
-.record { display: grid; grid-template-columns: 52px 1fr; border: 1px solid var(--gb-border); border-radius: 14px; padding: 16px; transition: opacity .2s, border-color .2s; }
+.record { display: grid; grid-template-columns: 52px 1fr; border: 1px solid rgba(179, 199, 255, .1); border-radius: 9px; padding: 16px; background: #242a32; transition: opacity .2s, border-color .2s, background .2s; }
 .record:focus-within { border-color: var(--gb-border-strong); }
 .record.muted { opacity: .55; }
 .record-select { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
@@ -282,11 +282,13 @@ textarea { resize: vertical; }
 .selection-copy { margin-right: auto; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .5; }
-.primary, .secondary, .text-button { border-radius: 999px; padding: 10px 16px; font-weight: 700; }
+.primary, .secondary, .text-button { border-radius: 8px; padding: 10px 16px; font-weight: 700; }
 .primary { border: 0; background: var(--gb-accent); color: #141820; }
 .primary:hover:not(:disabled) { background: var(--gb-accent-hover); }
 .secondary { border: 1px solid var(--gb-border-strong); background: transparent; color: var(--gb-heading); }
 .text-button { border: 0; padding-inline: 4px; background: transparent; color: var(--gb-accent); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible { outline: 2px solid var(--gb-accent); outline-offset: 2px; }
 
 @media (max-width: 700px) {
   .overlay { padding: 0; place-items: stretch; }

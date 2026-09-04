@@ -10,6 +10,25 @@ describe('CARFAX maintenance import', () => {
     expect(wrapper.emitted('import')).toHaveLength(1)
   })
 
+  it('summarizes service status and history in the maintenance header', () => {
+    const wrapper = mount(MaintenanceHeader, {
+      props: {
+        car: { make: 'Honda', model: 'Accord', mileage: 108707 },
+        maintenances: [
+          { date_of_service: '2026-02-01', cost: 120 },
+          { date_of_service: '2025-06-01', cost: 80 }
+        ],
+        reminders: [{ work_done: 'Oil change', is_due: true }]
+      }
+    })
+
+    expect(wrapper.text()).toContain('Honda Accord service history')
+    expect(wrapper.text()).toContain('Oil change is due')
+    expect(wrapper.text()).toContain('108,707 mi')
+    expect(wrapper.text()).toContain('$200')
+    expect(wrapper.text()).toContain('Feb 1, 2026')
+  })
+
   it('previews a PDF and confirms selected records', async () => {
     const preview = {
       report: { vin: '1HGCP3F89BA028384', vehicle: '2011 Honda Accord EX-L V6' },

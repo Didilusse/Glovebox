@@ -39,6 +39,12 @@ describe('filterAndSortMaintenances', () => {
     expect(filterAndSortMaintenances(logs, '', 'cost-low').map(log => log._id)).toEqual(['b', 'c', 'a'])
   })
 
+  it('filters by service category alongside search', () => {
+    expect(filterAndSortMaintenances(logs, '', 'recent', 'engine').map(log => log._id)).toEqual(['c'])
+    expect(filterAndSortMaintenances(logs, 'oil', 'recent', 'fluids').map(log => log._id)).toEqual(['b'])
+    expect(filterAndSortMaintenances(logs, 'oil', 'recent', 'engine')).toEqual([])
+  })
+
   it('uses record ID as a stable tie-breaker and never mutates the source', () => {
     const equalDate = [{ ...logs[0], _id: 'z' }, { ...logs[0], _id: 'a' }]
     const original = [...equalDate]
