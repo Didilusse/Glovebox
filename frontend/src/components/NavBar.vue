@@ -95,6 +95,11 @@ const nhtsaLink = computed(() => route.params.carId ? `/nhtsa/${route.params.car
   list-style: none;
 }
 
+.navbar-menu > li {
+  display: flex;
+  align-items: center;
+}
+
 .navbar-menu a {
   display: block;
   padding: 8px 12px;
@@ -150,6 +155,10 @@ const nhtsaLink = computed(() => route.params.carId ? `/nhtsa/${route.params.car
     padding: 12px 14px 16px;
     border-bottom: 1px solid var(--gb-border);
     background: var(--gb-background-deep);
+  }
+
+  .navbar-menu > li {
+    display: block;
   }
 
   .navbar-menu.open {

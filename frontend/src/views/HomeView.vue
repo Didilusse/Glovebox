@@ -252,6 +252,10 @@ async function handleDeleteCar(carId) {
     padding: 12px 0;
   }
 
+  .header-inner :deep(.account-controls) {
+    flex-basis: 100%;
+  }
+
   .header-add-button {
     padding: 9px 14px;
   }
