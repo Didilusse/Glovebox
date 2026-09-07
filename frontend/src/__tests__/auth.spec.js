@@ -159,9 +159,10 @@ describe('initialization and guards', () => {
     expect(auth.ready).toBe(true)
   })
   it('accepts normalized usernames and preserves password whitespace at boundaries', () => {
-    expect(validateCredentials(' Alice ', '        ')).toBe('')
+    expect(validateCredentials(' Alice ', '    ')).toBe('')
+    expect(validateCredentials('abc', 'xxx')).toContain('4-128')
     expect(validateCredentials('abc', 'x'.repeat(128))).toBe('')
-    expect(validateCredentials('abc', 'x'.repeat(129))).toContain('8-128')
+    expect(validateCredentials('abc', 'x'.repeat(129))).toContain('4-128')
     expect(validateCredentials('_abc', 'password')).toContain('Username')
     expect(validateCredentials('ab', 'password')).toContain('Username')
   })

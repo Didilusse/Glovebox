@@ -28,7 +28,7 @@ async function submit() {
   <main class="auth-page">
     <section class="auth-card">
       <h1>Account security</h1>
-      <p>Choose a password of 8-128 characters. Spaces are preserved.</p>
+      <p>Choose a password of 4-128 characters. Spaces are preserved.</p>
       <form class="auth-form" @submit.prevent="submit">
         <label>Current password<input v-model="current" type="password" autocomplete="current-password" required :disabled="busy" /></label>
         <label>New password<input v-model="password" type="password" autocomplete="new-password" required :disabled="busy" /></label>

@@ -63,7 +63,7 @@ async function submit() {
         <label>Username<input v-model="username" name="username" autocomplete="username" required :disabled="busy" /></label>
         <label>Password<input v-model="password" name="password" type="password" :autocomplete="setup ? 'new-password' : 'current-password'" required :disabled="busy" /></label>
         <template v-if="setup">
-          <small>Username: 3-30 lowercase letters, numbers, dots, underscores or hyphens. Password: 8-128 characters, including spaces.</small>
+          <small>Username: 3-30 lowercase letters, numbers, dots, underscores or hyphens. Password: 4-128 characters, including spaces.</small>
           <label>Confirm password<input v-model="confirmation" type="password" autocomplete="new-password" required :disabled="busy" /></label>
           <label v-if="auth.setupTokenRequired">Setup token<input v-model="setupToken" type="password" autocomplete="off" required :disabled="busy" /></label>
         </template>

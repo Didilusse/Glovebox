@@ -20,7 +20,7 @@ def test_admin_lists_and_creates_users(api_client):
     )
     assert duplicate.status_code == 409
 
-    weak = api_client.post("/users/", json={"username": "helper", "password": "short"})
+    weak = api_client.post("/users/", json={"username": "helper", "password": "abc"})
     assert weak.status_code == 422
 
 
@@ -59,7 +59,7 @@ def test_admin_resets_password_and_revokes_sessions(api_client):
     ).status_code == 200
 
     assert api_client.patch(
-        f"/users/{created['_id']}/password", json={"new_password": "tiny"}
+        f"/users/{created['_id']}/password", json={"new_password": "abc"}
     ).status_code == 422
     assert api_client.patch(
         "/users/000000000000000000000000/password",

@@ -108,7 +108,7 @@ password from **Account**. Administrator accounts cannot be deleted.
 Sessions are opaque bearer tokens held in browser `sessionStorage`, so closing
 the tab ends browser persistence. Logout revokes the current token; password
 resets revoke all target-user sessions. Password changes retain only the current
-session. New passwords preserve whitespace and support 8-128 characters.
+session. New passwords preserve whitespace and support 4-128 characters.
 
 Login throttling is process-local. Multi-worker or public deployments should
 also enforce rate limits at the trusted HTTPS ingress. If that ingress is

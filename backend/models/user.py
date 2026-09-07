@@ -46,7 +46,7 @@ class UserResponse(BaseModel):
 
 class UserCreate(BaseModel):
     username: str
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=4, max_length=128)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -62,14 +62,14 @@ class UserCreate(BaseModel):
 
 
 class PasswordReset(BaseModel):
-    new_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=4, max_length=128)
 
     model_config = ConfigDict(extra="forbid")
 
 
 class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
-    new_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=4, max_length=128)
 
     model_config = ConfigDict(extra="forbid")
 

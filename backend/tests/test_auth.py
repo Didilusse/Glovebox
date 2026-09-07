@@ -37,7 +37,7 @@ def test_setup_rejects_second_admin_and_weak_payloads(raw_client):
     ).status_code == 403
 
     assert raw_client.post(
-        "/auth/setup", json={"username": "short", "password": "tiny"}
+        "/auth/setup", json={"username": "short", "password": "abc"}
     ).status_code == 422
 
 
