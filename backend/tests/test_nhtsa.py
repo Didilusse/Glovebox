@@ -72,6 +72,7 @@ def test_nhtsa_uses_vin_decoded_vehicle_for_recalls(monkeypatch):
 
     assert result["errors"] == {}
     assert calls == [("2011", "HONDA", "Accord")]
+    assert result["recall_lookup_url"] == "https://www.nhtsa.gov/recalls?vymm=1HGCP3F89BA028384"
 
 
 def test_recall_fields_include_campaign_and_manufacturer_number():

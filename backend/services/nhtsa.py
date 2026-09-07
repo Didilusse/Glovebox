@@ -11,7 +11,7 @@ RATINGS_SEARCH_URL = (
 )
 RATINGS_DETAIL_URL = "https://api.nhtsa.gov/SafetyRatings/VehicleId/{vehicle_id}"
 RECALLS_URL = "https://api.nhtsa.gov/recalls/recallsByVehicle"
-NHTSA_VIN_LOOKUP_URL = "https://www.nhtsa.gov/recalls?vin={vin}"
+NHTSA_VIN_LOOKUP_URL = "https://www.nhtsa.gov/recalls?vymm={vin}"
 
 
 class NhtsaError(Exception):

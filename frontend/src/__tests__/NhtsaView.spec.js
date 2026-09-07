@@ -30,7 +30,7 @@ describe('NhtsaView', () => {
           remedy: 'Dealers will replace the suction pump.',
           notes: 'Contact NHTSA.'
         }],
-        recall_lookup_url: 'https://www.nhtsa.gov/recalls?vin=3VW547AUXHM054108',
+        recall_lookup_url: 'https://www.nhtsa.gov/recalls?vymm=3VW547AUXHM054108',
         errors: {}
       })
     })
@@ -49,6 +49,6 @@ describe('NhtsaView', () => {
     expect(wrapper.text()).toContain('24V110')
     expect(wrapper.text()).toContain('20UF')
     expect(wrapper.text()).toContain('FUEL SYSTEM, GASOLINE')
-    expect(wrapper.find('.lookup-link').attributes('href')).toBe('https://www.nhtsa.gov/recalls?vin=3VW547AUXHM054108')
+    expect(wrapper.find('.lookup-link').attributes('href')).toBe('https://www.nhtsa.gov/recalls?vymm=3VW547AUXHM054108')
   })
 })
