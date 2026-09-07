@@ -1,9 +1,9 @@
 from datetime import date
-from beanie import PydanticObjectId
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
+from backend.auth import get_owned_car
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import Category, DoneBy, MaintenanceLog
 from backend.services.carfax_importer import (
@@ -20,6 +20,12 @@ MAX_IMPORT_RECORDS = 100
 MAX_WORK_DONE_LENGTH = 500
 MAX_NOTES_LENGTH = 5000
 router = APIRouter(prefix="/cars/{car_id}/logs/import", tags=["Maintenance Import"])
+
+
+async def get_import_car(car: CarModel = Depends(get_owned_car)) -> CarModel:
+    if car.is_deleting:
+        raise HTTPException(status_code=404, detail="Car not found")
+    return car
 
 
 class ImportRecord(BaseModel):
@@ -52,10 +58,9 @@ class ConfirmImportRequest(BaseModel):
 
 @router.post("/preview")
 async def preview_carfax_import(
-    car_id: PydanticObjectId,
     file: UploadFile = File(...),
+    car: CarModel = Depends(get_import_car),
 ):
-    car = await _get_car(car_id)
     report = await parse_uploaded_carfax(file)
 
     _validate_vin(car.vin, report.vin)
@@ -70,7 +75,7 @@ async def preview_carfax_import(
         for record in report.records
     ]
     existing = await MaintenanceLog.find(
-        {"car_id": car_id, "source": "carfax", "source_record_key": {"$in": keys}}
+        {"car_id": car.id, "source": "carfax", "source_record_key": {"$in": keys}}
     ).to_list()
     existing_keys = {log.source_record_key for log in existing}
 
@@ -172,8 +177,7 @@ def serialize_report_vehicle(report):
 
 
 @router.post("/confirm", status_code=201)
-async def confirm_carfax_import(car_id: PydanticObjectId, payload: ConfirmImportRequest):
-    car = await _get_car(car_id)
+async def confirm_carfax_import(payload: ConfirmImportRequest, car: CarModel = Depends(get_import_car)):
     report_vin = payload.report_vin.upper()
     _validate_vin(car.vin, report_vin)
 
@@ -194,15 +198,8 @@ async def confirm_carfax_import(car_id: PydanticObjectId, payload: ConfirmImport
         record["source_record_key"] = expected_key
         records.append(record)
 
-    created, skipped = await create_imported_logs(car_id, records)
+    created, skipped = await create_imported_logs(car.id, records)
     return {"created": len(created), "skipped_duplicates": skipped, "records": created}
-
-
-async def _get_car(car_id: PydanticObjectId) -> CarModel:
-    car = await CarModel.get(car_id)
-    if not car or car.is_deleting:
-        raise HTTPException(status_code=404, detail="Car not found")
-    return car
 
 
 def _validate_vin(car_vin: str | None, report_vin: str) -> None:

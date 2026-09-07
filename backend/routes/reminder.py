@@ -1,9 +1,9 @@
 from datetime import date
 from typing import List
 
-from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
+from backend.auth import get_owned_car
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog, MaintenanceReminder
 from backend.services.reminders import determine_due_reason, reminder_sort_key
@@ -14,16 +14,12 @@ router = APIRouter(prefix="/cars/{car_id}/reminders", tags=["Reminders"])
 
 @router.get("/", response_model=List[MaintenanceReminder])
 async def list_reminders(
-	car_id: PydanticObjectId,
+	car: CarModel = Depends(get_owned_car),
 	only_due: bool = Query(False, description="Return only reminders that are currently due"),
 	skip: int = Query(0, ge=0),
 	limit: int = Query(100, ge=1, le=100),
 ):
-	car = await CarModel.get(car_id)
-	if not car:
-		raise HTTPException(status_code=404, detail="Car not found")
-
-	maintenance_logs = await MaintenanceLog.find(MaintenanceLog.car_id == car_id).to_list()
+	maintenance_logs = await MaintenanceLog.find(MaintenanceLog.car_id == car.id).to_list()
 	current_date = date.today()
 	current_mileage = car.mileage if car.mileage is not None else car.initial_mileage
 

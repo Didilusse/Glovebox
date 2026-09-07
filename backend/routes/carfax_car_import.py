@@ -1,9 +1,11 @@
 import re
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.auth import ensure_car_owner_active, get_current_user
 from backend.models.car_model import CarCreate, CarModel
+from backend.models.user import User
 from backend.routes.maintenance_import import (
     ImportRecord,
     parse_uploaded_carfax,
@@ -26,9 +28,9 @@ class CarfaxCarConfirmRequest(BaseModel):
 
 
 @router.post("/preview")
-async def preview_carfax_car(file: UploadFile = File(...)):
+async def preview_carfax_car(file: UploadFile = File(...), user: User = Depends(get_current_user)):
     report = await parse_uploaded_carfax(file)
-    await _reject_existing_vin(report.vin)
+    await _reject_existing_vin(report.vin, user)
     records = serialize_import_records(report)
     return {
         "report": serialize_report_vehicle(report),
@@ -46,11 +48,11 @@ async def preview_carfax_car(file: UploadFile = File(...)):
 
 
 @router.post("/confirm", status_code=201)
-async def confirm_carfax_car(payload: CarfaxCarConfirmRequest):
+async def confirm_carfax_car(payload: CarfaxCarConfirmRequest, user: User = Depends(get_current_user)):
     report_vin = payload.report_vin.upper()
     if not payload.vehicle.vin or payload.vehicle.vin.upper() != report_vin:
         raise HTTPException(status_code=422, detail="The vehicle VIN must match the CARFAX report")
-    await _reject_existing_vin(report_vin)
+    await _reject_existing_vin(report_vin, user)
 
     records = []
     seen_keys: set[str] = set()
@@ -73,8 +75,9 @@ async def confirm_carfax_car(payload: CarfaxCarConfirmRequest):
     car_data["vin"] = report_vin
     if car_data["initial_mileage"] is None and car_data["mileage"] is not None:
         car_data["initial_mileage"] = car_data["mileage"]
-    car = CarModel(**car_data)
+    car = CarModel(owner_id=user.id, **car_data)
     await car.insert()
+    await ensure_car_owner_active(car)
     try:
         created, skipped = await create_imported_logs(car.id, records)
     except Exception:
@@ -85,8 +88,8 @@ async def confirm_carfax_car(payload: CarfaxCarConfirmRequest):
     return {"car": saved_car, "created": len(created), "skipped_duplicates": skipped}
 
 
-async def _reject_existing_vin(vin: str) -> None:
+async def _reject_existing_vin(vin: str, user: User) -> None:
     escaped = re.escape(vin)
-    existing = await CarModel.find_one({"vin": {"$regex": f"^{escaped}$", "$options": "i"}})
+    existing = await CarModel.find_one({"owner_id": user.id, "vin": {"$regex": f"^{escaped}$", "$options": "i"}})
     if existing:
         raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists")

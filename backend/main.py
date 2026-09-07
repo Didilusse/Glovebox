@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import close_db, init_db
-from backend.routes import carfax_car_import, maintenance_import, maintenance_logs, car_route, stats, reminder, mods, nhtsa
+from backend.config import settings
+from backend.routes import auth_route, carfax_car_import, maintenance_import, maintenance_logs, car_route, stats, reminder, mods, nhtsa, users_route
 
 
 @asynccontextmanager
@@ -17,13 +18,14 @@ app = FastAPI(title="Glovebox API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r"https?://.*",
+    allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["*"], 
     allow_headers=["*"],
 )
 
+app.include_router(auth_route.router)
+app.include_router(users_route.router)
 app.include_router(car_route.router)
 app.include_router(carfax_car_import.router)
 app.include_router(maintenance_logs.router)
