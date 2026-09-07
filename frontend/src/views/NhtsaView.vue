@@ -1,6 +1,5 @@
 <template>
   <NavBar />
-  <Toast />
 
   <main class="nhtsa-page">
     <header class="page-header">
@@ -168,14 +167,14 @@
 </template>
 
 <script setup>
+import { API_BASE, useApiClient } from '../utils/auth'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
 
 const route = useRoute()
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const fetch = useApiClient()
 
 const data = ref(null)
 const loading = ref(true)

@@ -90,6 +90,8 @@
 </template>
 
 <script setup>
+import { useApiClient } from '../utils/auth'
+const fetch = useApiClient()
 import { computed, ref } from 'vue'
 
 const props = defineProps({

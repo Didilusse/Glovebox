@@ -1,6 +1,5 @@
 <template>
   <NavBar />
-  <Toast />
   <main class="maintenance-page">
     <MaintenanceHeader :car="car" :maintenances="maintenances" :reminders="reminders" @add="openCreateMaintenance" @import="isImportOpen = true" />
     <MaintenanceControls v-model:search="search" v-model:sort="sort" v-model:category="category" />
@@ -27,9 +26,10 @@
 </template>
 
 <script setup>
+import { API_BASE, useApiClient } from '../utils/auth'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
 import MaintenanceForm from '../components/MaintenanceForm.vue'
 import MaintenanceHeader from '../components/MaintenanceHeader.vue'
@@ -48,8 +48,7 @@ const selectedMaintenance = ref(null)
 const search = ref('')
 const sort = ref('recent')
 const category = ref('all')
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const fetch = useApiClient()
 
 const formMode = computed(() => (selectedMaintenance.value ? 'edit' : 'create'))
 const formKey = computed(() => selectedMaintenance.value?._id ?? 'new')

@@ -19,18 +19,19 @@
       </button>
 
       <ul :class="['navbar-menu', { open: isMobileMenuOpen }]">
-        <li>
+        <li v-if="route.params.carId">
           <router-link :to="carDetailLink" @click="isMobileMenuOpen = false">Dashboard</router-link>
         </li>
-        <li>
+        <li v-if="route.params.carId">
           <router-link :to="maintenanceLink" @click="isMobileMenuOpen = false">Maintenance</router-link>
         </li>
-        <li>
+        <li v-if="route.params.carId">
           <router-link :to="modsLink" @click="isMobileMenuOpen = false">Mods</router-link>
         </li>
-        <li>
+        <li v-if="route.params.carId">
           <router-link :to="nhtsaLink" @click="isMobileMenuOpen = false">Safety</router-link>
         </li>
+        <li><AccountControls /></li>
       </ul>
     </div>
   </nav>
@@ -39,6 +40,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import AccountControls from './AccountControls.vue'
 
 const isMobileMenuOpen = ref(false)
 const route = useRoute()

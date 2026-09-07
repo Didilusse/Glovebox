@@ -87,6 +87,8 @@
 </template>
 
 <script setup>
+import { useApiClient } from '../utils/auth'
+const fetch = useApiClient()
 import { computed, ref } from 'vue'
 import { showToast } from './Toast.vue'
 import CarfaxCarImport from './CarfaxCarImport.vue'
@@ -147,32 +149,36 @@ async function handleCreateCar() {
   if (purchasedDate.value) payload.purchased_date = purchasedDate.value
   if (purchasedPrice.value !== '') payload.purchased_price = Number(purchasedPrice.value)
 
-  const response = await fetch(`${props.apiBase}/cars/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
+  try {
+    const response = await fetch(`${props.apiBase}/cars/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
 
-  if (!response.ok) {
-    showToast('Failed to create car', 'error')
-    throw new Error('Failed to create car')
+    if (!response.ok) {
+      showToast('Failed to create car', 'error')
+      return
+    }
+
+    const data = await response.json()
+    emit('created', data)
+
+    make.value = ''
+    model.value = ''
+    year.value = ''
+    mileage.value = ''
+    vin.value = ''
+    licensePlate.value = ''
+    fuelType.value = 'gas'
+    purchasedDate.value = ''
+    purchasedPrice.value = ''
+    showToast('Car created successfully', 'success')
+  } catch (error) {
+    if (error.name !== 'AbortError') showToast('Failed to create car', 'error')
   }
-
-  const data = await response.json()
-  emit('created', data)
-
-  make.value = ''
-  model.value = ''
-  year.value = ''
-  mileage.value = ''
-  vin.value = ''
-  licensePlate.value = ''
-  fuelType.value = 'gas'
-  purchasedDate.value = ''
-  purchasedPrice.value = ''
-  showToast('Car created successfully', 'success')
 }
 
 function handleCarfaxCreated(result) {

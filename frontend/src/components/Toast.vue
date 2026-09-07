@@ -1,13 +1,14 @@
 <template>
   <transition name="fade">
-    <div v-if="toastStore.visible" :class="['toast-popup', toastStore.type]">
+    <div v-if="toastStore.visible" role="status" :class="['toast-popup', toastStore.type]">
       {{ toastStore.message }}
     </div>
   </transition>
 </template>
 
 <script>
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
+import { auth } from '../utils/auth';
 
 export const toastStore = reactive({
   message: '',
@@ -15,12 +16,16 @@ export const toastStore = reactive({
   visible: false
 });
 
+let timer;
+watch(() => auth.version, () => { toastStore.visible = false; });
+
 export function showToast(message, type = 'success') {
+  clearTimeout(timer);
   toastStore.message = message;
   toastStore.type = type;
   toastStore.visible = true;
 
-  setTimeout(() => {
+  timer = setTimeout(() => {
     toastStore.visible = false;
   }, 3000);
 }

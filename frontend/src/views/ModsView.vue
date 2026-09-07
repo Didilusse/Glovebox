@@ -1,6 +1,5 @@
 <template>
   <NavBar />
-  <Toast />
   <main class="mods-page">
     <ModsHeader :car-name="carName" :mods="mods" @add="openCreateForm" />
 
@@ -37,13 +36,14 @@
 </template>
 
 <script setup>
+import { API_BASE, useApiClient } from '../utils/auth'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ModForm from '../components/ModForm.vue'
 import ModsBoard from '../components/ModsBoard.vue'
 import ModsHeader from '../components/ModsHeader.vue'
 import NavBar from '../components/NavBar.vue'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
 
 const route = useRoute()
 const car = ref(null)
@@ -57,8 +57,7 @@ const isFormOpen = ref(false)
 const isFormSaving = ref(false)
 const selectedMod = ref(null)
 let savedStateTimer
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const fetch = useApiClient()
 
 const carName = computed(() => {
   if (!car.value) return ''

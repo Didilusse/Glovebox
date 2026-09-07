@@ -1,6 +1,5 @@
 <template>
   <div class="app-container">
-    <Toast />
 
     <header class="site-header">
       <div class="header-inner">
@@ -12,6 +11,7 @@
         <button type="button" class="header-add-button" @click="handleShowCarForm">
           Add car
         </button>
+        <AccountControls />
       </div>
     </header>
 
@@ -52,10 +52,11 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import CarForm from '../components/CarForm.vue'
 import CarList from '../components/CarList.vue'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
+import AccountControls from '../components/AccountControls.vue'
+import { API_BASE, useApiClient } from '../utils/auth'
 
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const fetch = useApiClient()
 const router = useRouter()
 const cars = ref([])
 const isCarFormVisible = ref(false)
@@ -75,22 +76,26 @@ function handleCloseCarForm() {
 }
 
 async function handleFetchCars() {
-  const fetchedCars = []
-  const pageSize = 100
+  try {
+    const fetchedCars = []
+    const pageSize = 100
 
-  while (true) {
-    const response = await fetch(`${API_BASE}/cars/?skip=${fetchedCars.length}&limit=${pageSize}`)
-    if (!response.ok) {
-      showToast('Failed to fetch cars', 'error')
-      return
+    while (true) {
+      const response = await fetch(`${API_BASE}/cars/?skip=${fetchedCars.length}&limit=${pageSize}`)
+      if (!response.ok) {
+        showToast('Failed to fetch cars', 'error')
+        return
+      }
+
+      const page = await response.json()
+      fetchedCars.push(...page)
+      if (page.length < pageSize) break
     }
 
-    const page = await response.json()
-    fetchedCars.push(...page)
-    if (page.length < pageSize) break
+    cars.value = fetchedCars
+  } catch (error) {
+    if (error.name !== 'AbortError') showToast('Unable to load your garage. Please reload to try again.', 'error')
   }
-
-  cars.value = fetchedCars
 }
 
 function handleCarCreated(car) {
@@ -99,16 +104,20 @@ function handleCarCreated(car) {
 }
 
 async function handleDeleteCar(carId) {
-  const response = await fetch(`${API_BASE}/cars/${carId}`, {
-    method: 'DELETE'
-  })
-  if (!response.ok) {
-    showToast('Failed to delete car', 'error')
-    return
-  }
+  try {
+    const response = await fetch(`${API_BASE}/cars/${carId}`, {
+      method: 'DELETE'
+    })
+    if (!response.ok) {
+      showToast('Failed to delete car', 'error')
+      return
+    }
 
-  cars.value = cars.value.filter(existingCar => existingCar._id !== carId)
-  showToast('Car deleted successfully', 'success')
+    cars.value = cars.value.filter(existingCar => existingCar._id !== carId)
+    showToast('Car deleted successfully', 'success')
+  } catch (error) {
+    if (error.name !== 'AbortError') showToast('Failed to delete car', 'error')
+  }
 }
 </script>
 
@@ -239,6 +248,8 @@ async function handleDeleteCar(carId) {
   .header-inner {
     width: min(100% - 28px, 1200px);
     gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 0;
   }
 
   .header-add-button {

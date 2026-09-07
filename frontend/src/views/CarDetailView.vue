@@ -56,15 +56,15 @@
 </template>
 
 <script setup>
+import { API_BASE, useApiClient } from '../utils/auth'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
 const route = useRoute()
 const car = ref(null)
 const stats = ref(null)
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const fetch = useApiClient()
 const reminders = ref([])
 
 const carMake = computed(() => {
@@ -86,8 +86,8 @@ const purchased_date = computed(() => car.value?.purchased_date ?? '')
 const purchased_price = computed(() => car.value?.purchased_price ?? '')
 
 onMounted(() => {
-  handleFetchCar()
-  handleFetchStats()
+  handleFetchCar().catch(() => showToast('Unable to load car', 'error'))
+  handleFetchStats().catch(() => showToast('Unable to load statistics', 'error'))
   handleFetchReminders()
 })
 
