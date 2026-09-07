@@ -21,6 +21,11 @@ def clear_login_limits():
     login_buckets.clear()
 
 
+@pytest.fixture(autouse=True)
+def isolate_setup_token(monkeypatch):
+    monkeypatch.setattr(settings, "setup_token", None)
+
+
 class AuthTestClient(TestClient):
     """TestClient that attaches the logged-in user's Authorization header to every request.
 
