@@ -25,7 +25,8 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017
       - DATABASE_NAME=${DATABASE_NAME:-glovebox}
       - SESSION_TTL_DAYS=${SESSION_TTL_DAYS:-30}
-      - SETUP_TOKEN_REQUIRED=false
+      - SETUP_TOKEN_REQUIRED=true
+      - SETUP_TOKEN=${SETUP_TOKEN:-}
       - FORWARDED_ALLOW_IPS=*
     networks:
       - glovebox-network
