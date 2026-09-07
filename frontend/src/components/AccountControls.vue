@@ -102,15 +102,15 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
           <div class="menu-links">
             <router-link to="/account" role="menuitem" @click="closeMenus">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-              <span><strong>Settings</strong><small>Password and account</small></span>
+              <span><strong>Settings</strong></span>
             </router-link>
             <router-link to="/welcome" role="menuitem" @click="closeMenus">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.8 5.6h5.9l-4.8 3.5 1.8 5.6-4.7-3.5-4.8 3.5 1.8-5.6-4.7-3.5h5.9L12 3Z" /></svg>
-              <span><strong>Get started</strong><small>Add another vehicle</small></span>
+              <span><strong>Get started</strong></span>
             </router-link>
             <router-link v-if="auth.user.is_admin" to="/admin" role="menuitem" @click="closeMenus">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-              <span><strong>Users</strong><small>Manage access</small></span>
+              <span><strong>Users</strong></span>
             </router-link>
           </div>
           <button class="logout-action" role="menuitem" :disabled="busy" @click="signOut">
@@ -160,7 +160,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
 .menu-links svg, .logout-action svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
 .menu-links span { display: grid; line-height: 1.25; }
 .menu-links strong { color: inherit; font-size: .85rem; font-weight: 650; }
-.menu-links small { color: var(--gb-text-muted); font-size: .69rem; }
 .logout-action { padding: 12px 17px; border-top: 1px solid var(--gb-border); border-radius: 0; color: var(--gb-danger); }
 .logout-action:disabled { cursor: wait; opacity: .55; }
 .menu-pop-enter-active, .menu-pop-leave-active { transition: opacity .14s ease, transform .14s ease; transform-origin: top right; }
