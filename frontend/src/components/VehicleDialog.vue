@@ -10,14 +10,18 @@ import { onMounted, onBeforeUnmount, ref } from 'vue'
 defineProps({ title: { type: String, required: true } })
 const emit = defineEmits(['close'])
 const dialog = ref(null)
-const previousFocus = document.activeElement
+const previousFocus = ref(null)
+
 onMounted(() => {
-  if (dialog.value.showModal) dialog.value.showModal()
-  else dialog.value.setAttribute('open', '')
+  previousFocus.value = document.activeElement
+  if (dialog.value?.showModal) dialog.value.showModal()
+  else dialog.value?.setAttribute('open', '')
 })
+
 onBeforeUnmount(() => {
   dialog.value?.close?.()
-  previousFocus?.focus()
+  const el = previousFocus.value
+  if (el && typeof el.focus === 'function' && document.contains(el)) el.focus()
 })
 function onBackdrop(event) {
   if (event.target !== dialog.value) return
