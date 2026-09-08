@@ -106,12 +106,13 @@ describe('authenticated client', () => {
   })
   it.each(['success', 'unauthorized', 'offline', 'timeout'])('preserves a login during logout after %s', async outcome => {
     vi.useFakeTimers()
-    // Other mounted UI tests may have polling timers; only assert logout cleanup here.
-    vi.clearAllTimers()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
     setSession('old-token', user)
     let resolve, reject
     fetch.mockReturnValueOnce(new Promise((done, fail) => { resolve = done; reject = fail }))
     const pending = logout()
+    const logoutDeadline = setTimeoutSpy.mock.results.at(-1).value
     const nextUser = { ...user, _id: 'b', username: 'bob' }
     fetch.mockResolvedValueOnce(json({ token: 'new-token', user: nextUser }))
     const session = await request('/auth/login', { username: 'bob', password: 'password' })
@@ -129,7 +130,7 @@ describe('authenticated client', () => {
     expect(auth.version).toBe(version)
     expect(sessionStorage.getItem('glovebox.session')).toBe('new-token')
     expect(auth.notice).toBe('New session notice')
-    expect(vi.getTimerCount()).toBe(0)
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(logoutDeadline)
   })
 })
 
