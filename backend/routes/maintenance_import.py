@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
-from backend.auth import get_owned_car
+from backend.auth import get_maintenance_car
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import Category, DoneBy, MaintenanceLog
 from backend.services.carfax_importer import (
@@ -22,7 +22,7 @@ MAX_NOTES_LENGTH = 5000
 router = APIRouter(prefix="/cars/{car_id}/logs/import", tags=["Maintenance Import"])
 
 
-async def get_import_car(car: CarModel = Depends(get_owned_car)) -> CarModel:
+async def get_import_car(car: CarModel = Depends(get_maintenance_car)) -> CarModel:
     if car.is_deleting:
         raise HTTPException(status_code=404, detail="Car not found")
     return car

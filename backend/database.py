@@ -6,6 +6,8 @@ from backend.models.maintenance_log import MaintenanceLog
 from backend.models.mod import ModItem
 from backend.models.session import AuthSession
 from backend.models.user import User
+from backend.models.car_share import CarShare
+from backend.models.notification import Notification, UserPreferences
 from backend.migrations import apply_default_migrations
 
 client = None
@@ -21,6 +23,9 @@ async def init_db():
             MaintenanceLog,
             CarModel,
             ModItem,
+            CarShare,
+            Notification,
+            UserPreferences,
             User,
             AuthSession
         ]

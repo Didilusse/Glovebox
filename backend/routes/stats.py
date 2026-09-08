@@ -1,6 +1,6 @@
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
-from backend.auth import get_owned_car
+from backend.auth import get_maintenance_car
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog
 
@@ -8,7 +8,7 @@ router = APIRouter(prefix="/cars/{car_id}/stats", tags=["Stats"])
 
 
 @router.get("/")
-async def get_vehicle_stats(car: CarModel = Depends(get_owned_car)):
+async def get_vehicle_stats(car: CarModel = Depends(get_maintenance_car)):
     car_id = car.id
     pipeline = [
         {"$match": {"car_id": car_id}},

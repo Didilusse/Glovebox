@@ -1,6 +1,8 @@
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
-from backend.auth import get_owned_car
+from backend.auth import get_maintenance_car, get_current_user
+from backend.models.user import User
+from backend.models.notification import UserPreferences, ReminderPreferences
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import (
     MaintenanceLog,
@@ -10,7 +12,7 @@ from backend.models.maintenance_log import (
 from typing import List
 
 from backend.services.maintenance import create_log
-from backend.services.reminders import calculate_next_reminder
+from backend.services.reminders import calculate_next_reminder, is_oil_change
 
 router = APIRouter(prefix="/cars/{car_id}/logs", tags=["Maintenance Logs"])
 
@@ -18,8 +20,14 @@ router = APIRouter(prefix="/cars/{car_id}/logs", tags=["Maintenance Logs"])
 async def create_maintenance_log(
     car_id: PydanticObjectId,
     log_data: MaintenanceLogCreate,
-    _: CarModel = Depends(get_owned_car),
+    _: CarModel = Depends(get_maintenance_car),
+    user: User = Depends(get_current_user),
 ):
+    if is_oil_change(log_data.work_done):
+        preferences = await UserPreferences.find_one(UserPreferences.user_id == user.id) or ReminderPreferences()
+        defaults = {field: getattr(preferences, f"oil_{field}") for field in ("interval_miles", "interval_months")
+                    if field not in log_data.model_fields_set}
+        log_data = log_data.model_copy(update=defaults)
     return await create_log(car_id, log_data)
 
 @router.get("/", response_model=List[MaintenanceLog])
@@ -28,7 +36,7 @@ async def get_maintenance_logs(car_id: PydanticObjectId, done_by: str | None = N
                                sort_by: str | None = None, sort_order: str = "asc",
                                skip: int = Query(0, ge=0),
                                limit: int = Query(100, ge=1, le=100),
-                               _: CarModel = Depends(get_owned_car)):
+                               _: CarModel = Depends(get_maintenance_car)):
 
     VALID_SORT_FIELDS = {"date_of_service", "cost", "mileage", "done_by", "work_done"}
     if sort_by is not None and sort_by not in VALID_SORT_FIELDS:
@@ -65,7 +73,7 @@ async def get_maintenance_logs(car_id: PydanticObjectId, done_by: str | None = N
 async def get_maintenance_log(
     car_id: PydanticObjectId,
     log_id: PydanticObjectId,
-    _: CarModel = Depends(get_owned_car),
+    _: CarModel = Depends(get_maintenance_car),
 ):
     maintenance_log = await MaintenanceLog.find_one(
         MaintenanceLog.id == log_id,
@@ -82,7 +90,7 @@ async def update_maintenance_log(
     car_id: PydanticObjectId,
     log_id: PydanticObjectId,
     log_data: MaintenanceLogUpdate,
-    _: CarModel = Depends(get_owned_car),
+    _: CarModel = Depends(get_maintenance_car),
 ):
     update_data = log_data.model_dump(exclude_unset=True)
     if not update_data:
@@ -135,7 +143,7 @@ async def update_maintenance_log(
 async def delete_maintenance_log(
     car_id: PydanticObjectId,
     log_id: PydanticObjectId,
-    _: CarModel = Depends(get_owned_car),
+    _: CarModel = Depends(get_maintenance_car),
 ):
     maintenance_log = await MaintenanceLog.get(log_id)
 

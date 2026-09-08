@@ -24,6 +24,7 @@ def clear_login_limits():
 @pytest.fixture(autouse=True)
 def isolate_setup_token(monkeypatch):
     monkeypatch.setattr(settings, "setup_token", None)
+    monkeypatch.setattr(settings, "reminder_worker_enabled", False)
 
 
 class AuthTestClient(TestClient):
@@ -74,11 +75,14 @@ def auth_headers_for(client, username, password):
 
 def _wipe(database):
     database.cars.delete_many({})
+    database.car_shares.delete_many({})
     database.maintenance_logs.delete_many({})
     database.mods.delete_many({})
     database.users.delete_many({})
     database.sessions.delete_many({})
     database.schema_migrations.delete_many({})
+    database.user_preferences.delete_many({})
+    database.notifications.delete_many({})
 
 
 @pytest.fixture()

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from beanie import PydanticObjectId
 from typing import List
-from backend.auth import get_owned_car
+from backend.auth import get_mods_car
 from backend.models.car_model import CarModel
 from backend.models.mod import ModItem, ModItemCreate, ModItemMove, ModItemUpdate, Status
 
@@ -9,16 +9,6 @@ router = APIRouter(
     prefix="/cars/{car_id}/planned-mods",
     tags=["Planned Mods"]
 )
-
-# Helper dependency that also rejects cars currently being deleted
-async def get_mods_car(car: CarModel = Depends(get_owned_car)) -> CarModel:
-    if car.is_deleting:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Car not found"
-        )
-    return car
-
 
 async def get_status_mods(car_id: PydanticObjectId, mod_status: Status) -> List[ModItem]:
     return await ModItem.find(

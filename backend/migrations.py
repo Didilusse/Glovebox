@@ -9,6 +9,7 @@ from pydantic_core import PydanticUndefined
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog
 from backend.models.mod import ModItem
+from backend.models.car_share import CarShare
 
 
 DEFAULT_MIGRATION_ID = "model-defaults"
@@ -16,6 +17,7 @@ MODELS = (
     (CarModel, "cars"),
     (MaintenanceLog, "maintenance_logs"),
     (ModItem, "mods"),
+    (CarShare, "car_shares"),
 )
 
 

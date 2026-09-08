@@ -12,6 +12,7 @@
       <article v-for="car in inventory" :key="car._id" class="car-card">
         <div class="car-info-main">{{ car.make }} {{ car.model }}</div>
         <div class="car-tags">
+          <span v-if="car.access && !car.access.is_owner">Shared by {{ car.access.owner_username }}</span>
           <span>{{ car.year || 'Year N/A' }}</span>
           <span v-if="car.fuel_type">{{ formatFuel(car.fuel_type) }}</span>
         </div>
@@ -22,7 +23,7 @@
 
         <div class="card-actions">
           <button class="view" type="button" @click="emit('view', car._id)">View vehicle →</button>
-          <button class="delete" type="button" @click="emit('delete', car._id)">Delete</button>
+          <button v-if="car.access?.is_owner" class="delete" type="button" @click="emit('delete', car._id)">Delete</button>
         </div>
       </article>
 

@@ -1,12 +1,58 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { auth, logout } from '../utils/auth'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { auth, logout, request } from '../utils/auth'
+
+const router = useRouter()
+const notifications = ref([])
+const notificationError = ref('')
+const notificationLoading = ref(false)
+const marking = ref(false)
+const unread = computed(() => notifications.value.filter(item => !item.read).length)
+let timer
+let generation = 0
+async function loadNotifications() {
+  if (!auth.user || notificationLoading.value) return
+  const current = generation
+  notificationLoading.value = true
+  try {
+    const data = await request('/notifications/', undefined, 'GET')
+    if (current !== generation) return
+    if (!Array.isArray(data)) throw new Error('Invalid notifications response')
+    notifications.value = data
+    notificationError.value = ''
+  } catch (e) {
+    if (current === generation && e.name !== 'AbortError') notificationError.value = 'Unable to refresh notifications. Updates may be missing.'
+  } finally { if (current === generation) notificationLoading.value = false }
+}
+async function openNotification(item) {
+  if (marking.value) return
+  const current = generation
+  marking.value = true
+  try {
+    if (!item.read) await request(`/notifications/${item._id}/read`, undefined, 'PATCH')
+    if (current !== generation) return
+    item.read = true
+    closeMenus()
+    await router.push(`/car/${item.car_id}?tab=reminders`)
+  } catch (e) {
+    if (current === generation && e.name !== 'AbortError') notificationError.value = 'Unable to open notification. Please retry.'
+  } finally { if (current === generation) marking.value = false }
+}
+onBeforeUnmount(() => { generation++; clearInterval(timer) })
 
 const busy = ref(false)
 const notificationsOpen = ref(false)
 const accountOpen = ref(false)
 const controls = ref(null)
 const userInitial = computed(() => auth.user?.username?.charAt(0).toUpperCase() || '?')
+watch(() => [auth.version, Boolean(auth.user)], () => {
+  generation++
+  clearInterval(timer)
+  notifications.value = []; notificationError.value = ''; notificationLoading.value = false; marking.value = false
+  closeMenus()
+  if (auth.user) { loadNotifications(); timer = setInterval(loadNotifications, 60000) }
+}, { immediate: true })
 
 function toggleNotifications() {
   notificationsOpen.value = !notificationsOpen.value
@@ -47,21 +93,31 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
         class="icon-trigger"
         :class="{ active: notificationsOpen }"
         :aria-expanded="notificationsOpen"
-        aria-haspopup="menu"
-        aria-label="Notifications"
+        :aria-label="unread ? `Notifications, ${unread} unread` : 'Notifications'"
         @click="toggleNotifications"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
         </svg>
+        <span v-if="unread" class="unread-badge">{{ unread }}</span>
       </button>
       <transition name="menu-pop">
-        <section v-if="notificationsOpen" class="dropdown notifications-menu" role="menu">
+        <section v-if="notificationsOpen" class="dropdown notifications-menu" aria-label="Notifications">
           <div class="dropdown-heading">
             <strong>Notifications</strong>
             <span>Updates from your garage</span>
           </div>
-          <div class="empty-notifications">
+          <p v-if="notificationError" role="alert">{{ notificationError }} <button @click="loadNotifications" :disabled="notificationLoading">Retry</button></p>
+          <p v-if="notificationLoading" role="status">Loading notifications...</p>
+          <ul v-if="notifications.length" class="notification-list">
+            <li v-for="item in notifications" :key="item._id">
+              <button :disabled="marking" @click="openNotification(item)">
+                <strong>{{ item.read ? '' : 'Unread: ' }}{{ item.title }}</strong>
+                <span>{{ item.message }}</span><time>{{ new Date(item.created_at).toLocaleString() }}</time>
+              </button>
+            </li>
+          </ul>
+          <div v-else-if="!notificationLoading && !notificationError" class="empty-notifications">
             <span class="empty-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
             </span>
@@ -100,10 +156,11 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
             </div>
           </div>
           <div class="menu-links">
-            <router-link to="/account" role="menuitem" @click="closeMenus">
+            <router-link to="/settings" role="menuitem" @click="closeMenus">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
               <span><strong>Settings</strong></span>
             </router-link>
+            <router-link to="/account" role="menuitem" @click="closeMenus">Account and password</router-link>
             <router-link to="/welcome" role="menuitem" @click="closeMenus">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.8 5.6h5.9l-4.8 3.5 1.8 5.6-4.7-3.5-4.8 3.5 1.8-5.6-4.7-3.5h5.9L12 3Z" /></svg>
               <span><strong>Get started</strong></span>
@@ -124,6 +181,10 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
 </template>
 
 <style scoped>
+.unread-badge { position: absolute; top: -3px; right: -3px; padding: 1px 5px; border-radius: 99px; background: var(--gb-danger); color: #fff; font-size: .7rem; }
+.notification-list { list-style: none; padding: 0; max-height: 50vh; overflow: auto; }
+.notification-list button { display: grid; gap: 6px; width: 100%; padding: 16px; text-align: left; background: transparent; color: var(--gb-text); border: 0; border-bottom: 1px solid var(--gb-border); cursor: pointer; overflow-wrap: anywhere; }
+.notifications-menu > p { padding: 16px; }
 .account-controls { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .menu-anchor { position: relative; }
 .account-anchor { min-width: 0; }

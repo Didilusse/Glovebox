@@ -28,6 +28,14 @@ services:
       - SETUP_TOKEN_REQUIRED=true
       - SETUP_TOKEN=${SETUP_TOKEN:-}
       - FORWARDED_ALLOW_IPS=*
+      - REMINDER_WORKER_ENABLED=${REMINDER_WORKER_ENABLED:-true}
+      - REMINDER_CHECK_SECONDS=${REMINDER_CHECK_SECONDS:-60}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_STARTTLS=${SMTP_STARTTLS:-true}
     networks:
       - glovebox-network
 

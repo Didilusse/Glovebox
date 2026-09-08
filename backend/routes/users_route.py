@@ -7,9 +7,11 @@ from starlette.concurrency import run_in_threadpool
 
 from backend.auth import hash_password, require_admin
 from backend.models.car_model import CarModel
+from backend.models.car_share import CarShare
 from backend.models.maintenance_log import MaintenanceLog
 from backend.models.mod import ModItem
 from backend.models.session import AuthSession
+from backend.models.notification import Notification, UserPreferences
 from backend.models.user import PasswordReset, User, UserCreate, UserResponse
 
 router = APIRouter(
@@ -80,7 +82,11 @@ async def delete_user(user_id: PydanticObjectId, current_user: User = Depends(re
         )
         await MaintenanceLog.find(MaintenanceLog.car_id == car.id).delete()
         await ModItem.find(ModItem.car_id == car.id).delete()
+        await CarShare.find(CarShare.car_id == car.id).delete()
         await car.delete()
 
     await AuthSession.find(AuthSession.user_id == user_id).delete()
+    await CarShare.find(CarShare.user_id == user_id).delete()
+    await Notification.find(Notification.user_id == user_id).delete()
+    await UserPreferences.find(UserPreferences.user_id == user_id).delete()
     await user.delete()

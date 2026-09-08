@@ -27,12 +27,13 @@
           chosen-class="drag-chosen"
           drag-class="drag-active"
           :animation="180"
-          :disabled="disabled"
+          :disabled="disabled || readOnly"
           @change="handleChange($event, column.status)"
         >
           <template #item="{ element }">
             <ModCard
               :mod="element"
+              :read-only="readOnly"
               :is-saving="movingId === element._id"
               :is-saved="savedId === element._id"
               @edit="$emit('edit', $event)"
@@ -41,7 +42,7 @@
           </template>
         </draggable>
         <div v-if="itemsByStatus[column.status].length === 0" class="empty-column">
-          <span>Drop a part here</span>
+          <span>{{ readOnly ? 'No parts' : 'Drop a part here' }}</span>
         </div>
       </div>
     </div>
@@ -54,6 +55,7 @@ import draggable from 'vuedraggable'
 import ModCard from './ModCard.vue'
 
 const props = defineProps({
+  readOnly: Boolean,
   mods: {
     type: Array,
     default: () => []
@@ -97,6 +99,7 @@ watch(
 )
 
 function handleChange(event, status) {
+  if (props.readOnly || props.disabled) return
   const change = event.added ?? event.moved
   if (!change) return
 

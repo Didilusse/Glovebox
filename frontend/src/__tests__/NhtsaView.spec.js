@@ -7,7 +7,10 @@ vi.mock('vue-router', () => ({
 
 describe('NhtsaView', () => {
   it('renders recall campaign details and the VIN status link', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ _id: 'car-1', access: { is_owner: true } })
+    }).mockResolvedValue({
       ok: true,
       json: async () => ({
         vin: '3VW547AUXHM054108',
@@ -30,7 +33,7 @@ describe('NhtsaView', () => {
           remedy: 'Dealers will replace the suction pump.',
           notes: 'Contact NHTSA.'
         }],
-        recall_lookup_url: 'https://www.nhtsa.gov/recalls?vymm=3VW547AUXHM054108',
+        recall_lookup_url: 'https://www.nhtsa.gov/recalls#vehicle',
         errors: {}
       })
     })
@@ -38,6 +41,7 @@ describe('NhtsaView', () => {
     const wrapper = mount(NhtsaView, {
       global: {
         stubs: {
+          AccountControls: true,
           'router-link': true
         }
       }
@@ -49,6 +53,6 @@ describe('NhtsaView', () => {
     expect(wrapper.text()).toContain('24V110')
     expect(wrapper.text()).toContain('20UF')
     expect(wrapper.text()).toContain('FUEL SYSTEM, GASOLINE')
-    expect(wrapper.find('.lookup-link').attributes('href')).toBe('https://www.nhtsa.gov/recalls?vymm=3VW547AUXHM054108')
+    expect(wrapper.find('.lookup-link').attributes('href')).toBe('https://www.nhtsa.gov/recalls#vehicle')
   })
 })

@@ -13,7 +13,8 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.config import settings
-from backend.models.car_model import CarModel
+from backend.models.car_model import CarModel, CarResponse
+from backend.models.car_share import CarAccess, CarShare, SharePermissions
 from backend.models.session import AuthSession
 from backend.models.user import User
 
@@ -118,10 +119,53 @@ async def get_owned_car(
     car_id: PydanticObjectId,
     user: User = Depends(get_current_user),
 ) -> CarModel:
-    car = await CarModel.get(car_id)
-    if not car or car.is_deleting or car.owner_id != user.id:
-        raise HTTPException(status_code=404, detail="Car not found")
+    car = await get_accessible_car(car_id, user)
+    if car.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Vehicle owner required")
     return car
+
+
+async def get_accessible_car(car_id: PydanticObjectId, user: User = Depends(get_current_user)) -> CarModel:
+    car = await CarModel.get(car_id)
+    if not car or car.is_deleting:
+        raise HTTPException(404, "Car not found")
+    owner = await User.get(car.owner_id) if car.owner_id else None
+    if not owner or owner.is_deleting:
+        raise HTTPException(404, "Car not found")
+    if car.owner_id != user.id and not await CarShare.find_one({"car_id": car.id, "user_id": user.id}):
+        raise HTTPException(404, "Car not found")
+    return car
+
+
+def require_car_section(section: str):
+    async def dependency(request: Request, car: CarModel = Depends(get_accessible_car), user: User = Depends(get_current_user)) -> CarModel:
+        if car.owner_id != user.id:
+            grant = await CarShare.find_one({"car_id": car.id, "user_id": user.id})
+            if not grant:
+                raise HTTPException(404, "Car not found")
+            permission = getattr(grant.permissions, section)
+            if permission == "none" or (request.method not in ("GET", "HEAD") and permission != "edit"):
+                raise HTTPException(403, f"{section.capitalize()} permission required")
+        return car
+    return dependency
+
+
+get_vehicle_car = require_car_section("vehicle")
+get_maintenance_car = require_car_section("maintenance")
+get_mods_car = require_car_section("mods")
+
+
+async def car_response(car: CarModel, user: User) -> CarResponse:
+    owner = await User.get(car.owner_id)
+    is_owner = car.owner_id == user.id
+    grant = None if is_owner else await CarShare.find_one({"car_id": car.id, "user_id": user.id})
+    if not owner or owner.is_deleting or car.is_deleting or (not is_owner and not grant):
+        raise HTTPException(404, "Car not found")
+    return CarResponse(
+        **car.model_dump(exclude={"is_deleting", "owner_id", "revision_id"}),
+        access=CarAccess(is_owner=is_owner, owner_username=owner.username,
+                         permissions=SharePermissions(vehicle="edit", maintenance="edit", mods="edit") if is_owner else grant.permissions),
+    )
 
 
 async def ensure_car_owner_active(car: CarModel) -> None:

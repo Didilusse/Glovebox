@@ -40,7 +40,7 @@
       <p v-if="log.notes" class="notes">{{ log.notes }}</p>
     </div>
 
-    <div class="record-actions">
+    <div v-if="!readOnly" class="record-actions">
       <button type="button" class="edit" aria-label="Edit service record" title="Edit service record" @click="$emit('edit', log)">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12 4 4 4-8 8H4v-4l8-8Zm-2 2 4 4" /></svg>
       </button>
@@ -54,7 +54,7 @@
 <script setup>
 import { computed } from 'vue'
 
-const props = defineProps({ log: { type: Object, required: true } })
+const props = defineProps({ log: { type: Object, required: true }, readOnly: Boolean })
 defineEmits(['delete', 'edit'])
 
 const parsedDate = computed(() => props.log.date_of_service ? new Date(`${props.log.date_of_service}T00:00:00Z`) : null)

@@ -3,7 +3,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.auth import ensure_car_owner_active, get_current_user
+from backend.auth import car_response, ensure_car_owner_active, get_current_user
 from backend.models.car_model import CarCreate, CarModel
 from backend.models.user import User
 from backend.routes.maintenance_import import (
@@ -85,7 +85,7 @@ async def confirm_carfax_car(payload: CarfaxCarConfirmRequest, user: User = Depe
         raise
 
     saved_car = await CarModel.get(car.id)
-    return {"car": saved_car, "created": len(created), "skipped_duplicates": skipped}
+    return {"car": await car_response(saved_car, user), "created": len(created), "skipped_duplicates": skipped}
 
 
 async def _reject_existing_vin(vin: str, user: User) -> None:

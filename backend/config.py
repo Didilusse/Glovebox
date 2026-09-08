@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     login_window_seconds: int = Field(300, ge=1, le=86400)
     login_max_buckets: int = Field(10000, ge=1, le=100000)
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    reminder_worker_enabled: bool = True
+    reminder_check_seconds: int = Field(60, ge=10, le=3600)
+    smtp_host: str | None = None
+    smtp_port: int = Field(587, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

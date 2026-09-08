@@ -82,6 +82,58 @@ deployment; do not use a default to invent data that is not known.
 
 ## Docker data
 
+### Reminders and notifications
+
+The vehicle dashboard has **Overview** and **Reminders** tabs. Only configured
+reminders appear in the Reminders tab. Time and mileage progress are shown
+separately; reaching either deadline makes a reminder due, and passing either
+deadline makes it overdue (red). Mileage alerts depend on the latest odometer
+reading entered in Glovebox, not live vehicle telemetry. Date checks use the
+server's current date (UTC in the supplied container).
+
+Open **Settings** from the account menu to configure oil-change defaults and
+optional custom HTTPS webhook, Discord webhook, or email destinations. New oil
+changes default to **5,000 miles / 6 months**, whichever comes first. Explicit
+intervals override defaults; clearing both disables the reminder. Defaults apply
+to new manual oil-change entries, not historical imports or existing records.
+The newest oil-change entry supersedes older oil reminders for the same car.
+For other services, clear an old reminder when it is no longer applicable.
+
+Home shows due services for your own cars and shared cars for which you can view
+maintenance. Persistent bell notifications and external deliveries go to the
+vehicle owner only. The background worker checks on startup and periodically
+(`REMINDER_CHECK_SECONDS`, default 60) while the API is running; no browser needs
+to be open. The bell refreshes every 60 seconds. Keep at least one API instance
+running with `REMINDER_WORKER_ENABLED=true`.
+
+Notifications are deduplicated per service and deadline. Marking one read does
+not resend it. Removing a reminder, recording a newer oil change, or deleting its
+car removes that alert from the current notification feed and cancels pending
+delivery. Destinations enabled when an alert is created are queued; adding a
+destination later does not resend past alerts. Pending deliveries use the current
+configured destination and stop if it is cleared.
+
+Custom webhooks receive JSON `{ "title": "...", "message": "..." }`. Discord
+webhooks receive a text message with mentions disabled. Only public HTTPS
+destinations on port 443 are supported: private addresses, credentials in URLs,
+and redirects are blocked. DNS addresses are validated and pinned for connection
+to prevent access to internal services. Treat webhook URLs as secrets; they are
+stored in your database and visible only through your authenticated settings.
+
+Email requires operator-provided `SMTP_HOST`, `SMTP_PORT` (default 587),
+`SMTP_FROM`, and, if required, `SMTP_USERNAME` / `SMTP_PASSWORD`. STARTTLS is on
+by default; only disable it for a trusted local relay. Email entry is unavailable
+in the UI until a host and sender are configured. The bundled client uses SMTP
+with STARTTLS, not implicit TLS on port 465. SMTP credentials never go to the
+browser.
+
+Failed external deliveries retry with backoff up to five attempts, independently
+of successful in-app notifications. Generic delivery failures are logged without
+destination URLs or credentials. Database leases coordinate multiple workers;
+external delivery is at-least-once, so a process crash after a successful send but
+before recording success can produce a duplicate. Network delivery should be
+verified with your own endpoints and SMTP provider before relying on alerts.
+
 ### Production deployment
 
 1. Copy `.env.example` to `.env`, generate a secret with `openssl rand -hex 32`,

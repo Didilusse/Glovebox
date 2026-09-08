@@ -7,7 +7,7 @@
         <p>A clear history of the work that keeps this car on the road.</p>
       </div>
 
-      <div class="actions">
+      <div v-if="!readOnly" class="actions">
         <button type="button" class="import-button" @click="$emit('import')">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9M4 14v2h12v-2" /></svg>
           Import CARFAX
@@ -50,6 +50,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
+  readOnly: Boolean,
   car: { type: Object, default: null },
   maintenances: { type: Array, default: () => [] },
   reminders: { type: Array, default: () => [] }

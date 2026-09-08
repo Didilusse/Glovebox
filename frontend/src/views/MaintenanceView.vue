@@ -1,13 +1,18 @@
 <template>
   <NavBar />
   <main class="maintenance-page">
-    <MaintenanceHeader :car="car" :maintenances="maintenances" :reminders="reminders" @add="openCreateMaintenance" @import="isImportOpen = true" />
+    <p v-if="!car" role="status">{{ loadFailed ? 'Unable to load vehicle access.' : 'Loading vehicle access...' }}</p>
+    <p v-else-if="!canView('maintenance')" role="alert">You do not have access to maintenance for this vehicle.</p>
+    <template v-else>
+    <p v-if="!canEdit('maintenance')">Read-only maintenance access</p>
+    <MaintenanceHeader :read-only="!canEdit('maintenance')" :car="car" :maintenances="maintenances" :reminders="reminders" @add="openCreateMaintenance" @import="canEdit('maintenance') && (isImportOpen = true)" />
     <MaintenanceControls v-model:search="search" v-model:sort="sort" v-model:category="category" />
-    <MaintenanceList :maintenances="displayedMaintenances" :has-records="maintenances.length > 0" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
+    <MaintenanceList :read-only="!canEdit('maintenance')" :maintenances="displayedMaintenances" :has-records="maintenances.length > 0" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
+    </template>
   </main>
 
   <MaintenanceForm
-    v-if="isFormOpen"
+    v-if="isFormOpen && canEdit('maintenance')"
     :key="formKey"
     :mode="formMode"
     :maintenance="selectedMaintenance"
@@ -17,8 +22,8 @@
     @updated="handleUpdateMaintenance"
   />
   <MaintenanceImport
-    v-if="isImportOpen"
-    :car-id="route.params.carId"
+    v-if="isImportOpen && canEdit('maintenance')"
+    :car-id="carId"
     :api-base="API_BASE"
     @close="isImportOpen = false"
     @imported="handleImported"
@@ -27,6 +32,7 @@
 
 <script setup>
 import { API_BASE, useApiClient } from '../utils/auth'
+import { provideVehicleAccess } from '../utils/vehicleAccess'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { showToast } from '../components/Toast.vue'
@@ -38,7 +44,10 @@ import MaintenanceImport from '../components/MaintenanceImport.vue'
 import MaintenanceControls from '../components/MaintenanceControls.vue'
 import { filterAndSortMaintenances } from '../utils/maintenanceDisplay.js'
 const route = useRoute()
+const carId = route.params.carId
 const car = ref(null)
+const { canView, canEdit } = provideVehicleAccess(car)
+const loadFailed = ref(false)
 const maintenances = ref([])
 const reminders = ref([])
 const isFormOpen = ref(false)
@@ -56,24 +65,31 @@ const displayedMaintenances = computed(() => filterAndSortMaintenances(maintenan
 
 
 
-onMounted(() => Promise.all([handleFetchCar(), handleFetchMaintenances(), handleFetchReminders()]))
+onMounted(async () => {
+  await handleFetchCar()
+  if (canView('maintenance')) await Promise.all([handleFetchMaintenances(), handleFetchReminders()])
+})
 
 async function handleFetchCar() {
+  car.value = null
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}`)
-    if (!response.ok) return
+    const response = await fetch(`${API_BASE}/cars/${carId}`)
+    if (!response.ok) throw new Error()
     car.value = await response.json()
   } catch {
+    loadFailed.value = true
     showToast('Failed to fetch car details', 'error')
   }
 }
 
 async function handleFetchReminders() {
+  if (!canView('maintenance')) return
   try {
     const fetchedReminders = []
     const pageSize = 100
     while (true) {
-      const response = await fetch(`${API_BASE}/cars/${route.params.carId}/reminders/?skip=${fetchedReminders.length}&limit=${pageSize}`)
+      if (!canView('maintenance')) return
+      const response = await fetch(`${API_BASE}/cars/${carId}/reminders/?skip=${fetchedReminders.length}&limit=${pageSize}`)
       if (!response.ok) return
       const page = await response.json()
       fetchedReminders.push(...page)
@@ -86,12 +102,14 @@ async function handleFetchReminders() {
 }
 
 async function handleFetchMaintenances() {
+  if (!canView('maintenance')) return
   try {
     const fetchedMaintenances = []
     const pageSize = 100
 
     while (true) {
-      const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/?skip=${fetchedMaintenances.length}&limit=${pageSize}`)
+      if (!canView('maintenance')) return
+      const response = await fetch(`${API_BASE}/cars/${carId}/logs/?skip=${fetchedMaintenances.length}&limit=${pageSize}`)
       if (!response.ok) {
         showToast('Failed to fetch maintenance logs', 'error')
         return
@@ -108,10 +126,11 @@ async function handleFetchMaintenances() {
 }
 
 async function handleCreateMaintenance(payload) {
+  if (!canEdit('maintenance')) return
   if (isFormSaving.value) return
   isFormSaving.value = true
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/`, {
+    const response = await fetch(`${API_BASE}/cars/${carId}/logs/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -126,7 +145,8 @@ async function handleCreateMaintenance(payload) {
 
     const newMaintenance = await response.json()
     maintenances.value = [newMaintenance, ...maintenances.value]
-    await Promise.all([handleFetchCar(), handleFetchReminders()])
+    await handleFetchCar()
+    await handleFetchReminders()
     isFormSaving.value = false
     showToast('Maintenance log created successfully', 'success')
     closeMaintenanceForm()
@@ -138,13 +158,14 @@ async function handleCreateMaintenance(payload) {
 }
 
 async function handleUpdateMaintenance(payload) {
+  if (!canEdit('maintenance')) return
   if (!selectedMaintenance.value || isFormSaving.value) {
     return
   }
 
   isFormSaving.value = true
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/${selectedMaintenance.value._id}`, {
+    const response = await fetch(`${API_BASE}/cars/${carId}/logs/${selectedMaintenance.value._id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
@@ -159,7 +180,8 @@ async function handleUpdateMaintenance(payload) {
 
     const updatedMaintenance = await response.json()
     maintenances.value = maintenances.value.map(log => (log._id === updatedMaintenance._id ? updatedMaintenance : log))
-    await Promise.all([handleFetchCar(), handleFetchReminders()])
+    await handleFetchCar()
+    await handleFetchReminders()
     isFormSaving.value = false
     showToast('Maintenance log updated successfully', 'success')
     closeMaintenanceForm()
@@ -171,8 +193,9 @@ async function handleUpdateMaintenance(payload) {
 }
 
 async function handleDeleteMaintenance(logId) {
+  if (!canEdit('maintenance')) return
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/logs/${logId}`, {
+    const response = await fetch(`${API_BASE}/cars/${carId}/logs/${logId}`, {
       method: 'DELETE'
     })
 
@@ -190,11 +213,13 @@ async function handleDeleteMaintenance(logId) {
 }
 
 function openCreateMaintenance() {
+  if (!canEdit('maintenance')) return
   selectedMaintenance.value = null
   isFormOpen.value = true
 }
 
 function openEditMaintenance(log) {
+  if (!canEdit('maintenance')) return
   selectedMaintenance.value = log
   isFormOpen.value = true
 }
@@ -207,7 +232,8 @@ function closeMaintenanceForm() {
 
 async function handleImported(result) {
   isImportOpen.value = false
-  await Promise.all([handleFetchCar(), handleFetchMaintenances(), handleFetchReminders()])
+  await handleFetchCar()
+  await Promise.all([handleFetchMaintenances(), handleFetchReminders()])
   showToast(`Imported ${result.created} maintenance records${result.skipped_duplicates ? `; skipped ${result.skipped_duplicates} duplicates` : ''}`, 'success')
 }
 

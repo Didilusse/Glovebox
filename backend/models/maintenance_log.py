@@ -131,3 +131,9 @@ class MaintenanceReminder(BaseModel):
     current_mileage: Optional[int] = None
     is_due: bool = False
     due_reason: Optional[str] = None
+    interval_miles: Optional[int] = None
+    interval_months: Optional[int] = None
+    is_overdue: bool = False
+    progress_miles: Optional[float] = None
+    progress_time: Optional[float] = None
+    car_name: Optional[str] = None

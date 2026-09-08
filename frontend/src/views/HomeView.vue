@@ -22,6 +22,7 @@
         <p>Keep your cars and maintenance history organized in one place.</p>
       </section>
 
+      <DueAlerts />
       <CarList
         :inventory="cars"
         class="car-list-section"
@@ -54,6 +55,7 @@ import CarForm from '../components/CarForm.vue'
 import CarList from '../components/CarList.vue'
 import { showToast } from '../components/Toast.vue'
 import AccountControls from '../components/AccountControls.vue'
+import DueAlerts from '../components/DueAlerts.vue'
 import { API_BASE, useApiClient } from '../utils/auth'
 
 const fetch = useApiClient()
@@ -104,6 +106,7 @@ function handleCarCreated(car) {
 }
 
 async function handleDeleteCar(carId) {
+  if (!cars.value.find(car => car._id === carId)?.access?.is_owner) return
   try {
     const response = await fetch(`${API_BASE}/cars/${carId}`, {
       method: 'DELETE'

@@ -22,10 +22,10 @@
         <li v-if="route.params.carId">
           <router-link :to="carDetailLink" @click="isMobileMenuOpen = false">Dashboard</router-link>
         </li>
-        <li v-if="route.params.carId">
+        <li v-if="route.params.carId && canAccess(car, 'maintenance')">
           <router-link :to="maintenanceLink" @click="isMobileMenuOpen = false">Maintenance</router-link>
         </li>
-        <li v-if="route.params.carId">
+        <li v-if="route.params.carId && canAccess(car, 'mods')">
           <router-link :to="modsLink" @click="isMobileMenuOpen = false">Mods</router-link>
         </li>
         <li v-if="route.params.carId">
@@ -38,12 +38,14 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
+import { canAccess, vehicleAccessKey } from '../utils/vehicleAccess'
 import { useRoute } from 'vue-router'
 import AccountControls from './AccountControls.vue'
 
 const isMobileMenuOpen = ref(false)
 const route = useRoute()
+const car = inject(vehicleAccessKey, ref(null))
 const carDetailLink = computed(() => route.params.carId ? `/car/${route.params.carId}` : '/car')
 const maintenanceLink = computed(() => route.params.carId ? `/maintenance/${route.params.carId}` : '/maintenance')
 const modsLink = computed(() => route.params.carId ? `/mods/${route.params.carId}` : '/mods')
