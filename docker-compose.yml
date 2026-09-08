@@ -42,6 +42,7 @@ services:
       DATABASE_NAME: ${DATABASE_NAME:?Set DATABASE_NAME}
       SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
       API_DOCS_ENABLED: "false"
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173","http://127.0.0.1:5173"]}
       SETUP_TOKEN_REQUIRED: "true"
       SETUP_TOKEN: ${SETUP_TOKEN:?Generate and set a setup token of at least 32 characters}
       FORWARDED_ALLOW_IPS: 172.30.0.10
@@ -53,6 +54,8 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    ports:
+      - "${API_BIND_ADDRESS:-127.0.0.1}:8000:8000"
     command:
       - uvicorn
       - backend.main:app

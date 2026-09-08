@@ -65,10 +65,34 @@ at `http://localhost:8000`.
    administrator.
 
 The frontend serves the built application and proxies `/api/` to the backend
-over HTTP. The backend and MongoDB ports are not published to the host.
+over HTTP. MongoDB is not published to the host.
 MongoDB has no database-level credentials in this stack; it is isolated on an
 internal Docker network. Configure an external trusted edge and TLS before
 binding the frontend beyond localhost.
+
+### LAN Testing
+
+To use a frontend on another trusted LAN computer, set this on the Docker host
+in `.env` and recreate the backend:
+
+```env
+API_BIND_ADDRESS=192.168.1.90
+```
+
+```bash
+docker compose up -d --force-recreate backend
+```
+
+On the testing computer, set its frontend `.env` to:
+
+```env
+VITE_API_BASE_URL=http://192.168.1.90:8000
+```
+
+Run the frontend locally with `npm run dev`. If it is served from a non-localhost
+origin, add that exact origin to the Docker host's `CORS_ORIGINS`, for example
+`CORS_ORIGINS=["http://192.168.1.50:5173"]`. Allow TCP port `8000` only from
+trusted LAN clients in the Docker host firewall.
 
 The setup token is required at production startup and setup closes after the
 first administrator is created. Keep it configured for future restarts.
