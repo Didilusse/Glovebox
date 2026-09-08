@@ -27,7 +27,7 @@
     <p v-if="mod.notes" class="notes">{{ mod.notes }}</p>
 
     <footer>
-      <a v-if="mod.url" :href="mod.url" target="_blank" rel="noopener noreferrer">
+      <a v-if="safeUrl" :href="safeUrl" target="_blank" rel="noopener noreferrer">
         View part
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 13 13 7m-4 0h4v4M12 4h4v12H4V4h5" /></svg>
       </a>
@@ -53,6 +53,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { safeExternalUrl } from '../utils/url'
 
 const props = defineProps({
   readOnly: Boolean,
@@ -67,6 +68,7 @@ const categoryLabel = computed(() => titleCase(props.mod.category || 'other'))
 const priorityLabel = computed(() => `${titleCase(props.mod.priority || 'medium')} priority`)
 const installLabel = computed(() => ({ diy: 'DIY install', shop: 'Shop install', undecided: 'Install TBD' })[props.mod.install_method] || 'Install TBD')
 const identityLine = computed(() => [props.mod.brand, props.mod.part_number].filter(Boolean).join(' / '))
+const safeUrl = computed(() => safeExternalUrl(props.mod.url))
 const formattedCost = computed(() => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(props.mod.cost) || 0))
 const formattedDate = computed(() => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${props.mod.target_date}T00:00:00Z`)))
 const isOverdue = computed(() => props.mod.status !== 'installed' && props.mod.target_date && props.mod.target_date < new Date().toISOString().slice(0, 10))

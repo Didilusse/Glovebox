@@ -94,9 +94,9 @@
             <h2>Recalls</h2>
           </div>
           <a
-            v-if="data.recall_lookup_url"
+            v-if="recallLookupUrl"
             class="lookup-link"
-            :href="data.recall_lookup_url"
+            :href="recallLookupUrl"
             target="_blank"
             rel="noreferrer"
           >
@@ -173,6 +173,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
+import { safeExternalUrl } from '../utils/url'
 
 const route = useRoute()
 const carId = route.params.carId
@@ -187,6 +188,7 @@ const loadError = ref('')
 const decode = computed(() => data.value?.decode ?? null)
 const recalls = computed(() => data.value?.recalls ?? [])
 const selectedRating = computed(() => data.value?.ratings?.selected ?? null)
+const recallLookupUrl = computed(() => safeExternalUrl(data.value?.recall_lookup_url))
 const vin = computed(() => data.value?.vin ?? '')
 const decodedFields = computed(() => decode.value?.fields ?? {})
 const vehicleName = computed(() => {

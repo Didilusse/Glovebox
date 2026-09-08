@@ -19,6 +19,6 @@ describe('ModsHeader', () => {
     expect(wrapper.text()).toContain('33%')
     expect(wrapper.text()).toContain('$2,500')
     expect(wrapper.text()).toContain('$800')
-    expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('33')
+    expect(wrapper.get('progress').attributes('aria-valuenow')).toBe('33')
   })
 })

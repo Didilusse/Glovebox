@@ -159,7 +159,7 @@ async function confirmAction() {
           <template v-if="action.type === 'create'">
             <label>Username<input v-model="username" autocomplete="off" required :disabled="busy" /></label>
             <label>Password<input v-model="password" type="password" autocomplete="new-password" required :disabled="busy" /></label>
-            <small>Username: 3-30 letters, numbers, dots, underscores or hyphens. Password: 4-128 characters.</small>
+            <small>Username: 3-30 letters, numbers, dots, underscores or hyphens. Password: 12-128 characters.</small>
           </template>
           <template v-else-if="action.type === 'reset'">
             <label>New password<input v-model="replacement" type="password" autocomplete="new-password" required :disabled="busy" /></label>

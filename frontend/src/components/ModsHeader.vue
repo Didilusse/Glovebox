@@ -21,9 +21,7 @@
           </div>
           <b>{{ progress }}%</b>
         </div>
-        <div class="progress-track" role="progressbar" aria-label="Build progress" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progress">
-          <span :style="{ width: `${progress}%` }"></span>
-        </div>
+        <progress class="progress-track" aria-label="Build progress" max="100" :value="progress" :aria-valuenow="progress"></progress>
       </div>
 
       <dl>
@@ -178,19 +176,22 @@ dt {
 }
 
 .progress-track {
+  display: block;
+  width: 100%;
   height: 6px;
   margin-top: 14px;
   overflow: hidden;
   border-radius: 99px;
   background: #30363f;
+  border: 0;
+  appearance: none;
 }
 
-.progress-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
+.progress-track::-webkit-progress-bar { border-radius: inherit; background: #30363f; }
+.progress-track::-webkit-progress-value,
+.progress-track::-moz-progress-bar {
+  border-radius: 99px;
   background: #6ec79e;
-  transition: width 300ms ease;
 }
 
 dl {

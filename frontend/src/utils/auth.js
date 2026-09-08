@@ -113,9 +113,9 @@ export function initializeAuth() {
 }
 
 export const normalizeUsername = value => value.trim().toLowerCase()
-export function validateCredentials(username, password) {
+export function validateCredentials(username, password, minimumPasswordLength = 12) {
   if (username !== null && !/^[a-z0-9][a-z0-9_.-]{2,29}$/.test(normalizeUsername(username))) return 'Username must be 3-30 characters: letters, numbers, dots, underscores or hyphens; start with a letter or number.'
-  if ([...password].length < 4 || [...password].length > 128) return 'Password must be 4-128 characters. Spaces are preserved.'
+  if ([...password].length < minimumPasswordLength || [...password].length > 128) return `Password must be ${minimumPasswordLength}-128 characters. Spaces are preserved.`
   return ''
 }
 
