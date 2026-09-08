@@ -7,12 +7,9 @@ services:
     container_name: glovebox-frontend
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:80"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     networks:
       - glovebox-network
 
@@ -22,14 +19,23 @@ services:
       dockerfile: backend/Dockerfile
     container_name: glovebox-api
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     depends_on:
       - mongodb
     environment:
-      - MONGO_URL=mongodb://mongodb:27017
-    volumes:
-      - ./backend:/app/backend
+      - MONGODB_URI=mongodb://mongodb:27017
+      - DATABASE_NAME=${DATABASE_NAME:-glovebox}
+      - SESSION_TTL_DAYS=${SESSION_TTL_DAYS:-30}
+      - SETUP_TOKEN_REQUIRED=true
+      - SETUP_TOKEN=${SETUP_TOKEN:-}
+      - FORWARDED_ALLOW_IPS=*
+      - REMINDER_WORKER_ENABLED=${REMINDER_WORKER_ENABLED:-true}
+      - REMINDER_CHECK_SECONDS=${REMINDER_CHECK_SECONDS:-60}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_STARTTLS=${SMTP_STARTTLS:-true}
     networks:
       - glovebox-network
 
@@ -37,8 +43,6 @@ services:
     image: mongo:7
     container_name: glovebox-db
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     volumes:
       - glovebox-mongodb-data:/data/db
     networks:

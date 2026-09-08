@@ -8,6 +8,7 @@ describe('CarList', () => {
         inventory: [
           {
             _id: 'car-1',
+            access: { is_owner: true },
             make: 'Toyota',
             model: 'Camry',
             year: 2020,

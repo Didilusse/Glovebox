@@ -17,7 +17,7 @@
     <div v-else class="timeline">
       <div v-for="log in maintenances" :key="log._id" class="timeline-entry">
         <span class="timeline-node"></span>
-        <MaintenanceLogCard :log="log" @delete="$emit('delete', $event)" @edit="$emit('edit', $event)" />
+        <MaintenanceLogCard :log="log" :read-only="readOnly" @delete="$emit('delete', $event)" @edit="$emit('edit', $event)" />
       </div>
     </div>
   </section>
@@ -29,6 +29,7 @@ import MaintenanceLogCard from './MaintenanceLogCard.vue'
 defineEmits(['delete', 'edit'])
 
 defineProps({
+  readOnly: Boolean,
   maintenances: {
     type: Array,
     default: () => []

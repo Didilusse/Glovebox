@@ -1,17 +1,4 @@
-import asyncio
 import importlib
-
-import backend.database as database
-
-
-async def _noop():
-    return None
-
-
-# Patch init_db to avoid requiring a real MongoDB in tests
-database.init_db = _noop
-
-# Reload main so the patched init_db is used in the lifespan
 main = importlib.import_module("backend.main")
 
 

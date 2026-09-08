@@ -11,7 +11,7 @@ RATINGS_SEARCH_URL = (
 )
 RATINGS_DETAIL_URL = "https://api.nhtsa.gov/SafetyRatings/VehicleId/{vehicle_id}"
 RECALLS_URL = "https://api.nhtsa.gov/recalls/recallsByVehicle"
-NHTSA_VIN_LOOKUP_URL = "https://www.nhtsa.gov/recalls?vin={vin}"
+NHTSA_RECALLS_URL = "https://www.nhtsa.gov/recalls#vehicle"
 
 
 class NhtsaError(Exception):
@@ -192,6 +192,6 @@ async def get_nhtsa_data(car: Any) -> dict[str, Any]:
         "decode": decode,
         "ratings": ratings,
         "recalls": recalls,
-        "recall_lookup_url": NHTSA_VIN_LOOKUP_URL.format(vin=vin),
+        "recall_lookup_url": NHTSA_RECALLS_URL,
         "errors": errors,
     }

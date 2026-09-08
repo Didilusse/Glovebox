@@ -1,8 +1,8 @@
 <template>
   <NavBar />
-  <Toast />
   <main class="mods-page">
-    <ModsHeader :car-name="carName" :mods="mods" @add="openCreateForm" />
+    <ModsHeader v-if="canView('mods')" :read-only="!canEdit('mods')" :car-name="carName" :mods="mods" @add="openCreateForm" />
+    <p v-if="canView('mods') && !canEdit('mods')">Read-only mods access</p>
 
     <div v-if="isLoading" class="board-message">
       <span class="loader"></span>
@@ -12,9 +12,11 @@
       <p>We couldn't load this build plan.</p>
       <button type="button" @click="loadPage">Try again</button>
     </div>
+    <p v-else-if="!canView('mods')" role="alert">You do not have access to mods for this vehicle.</p>
     <ModsBoard
       v-else
       :mods="mods"
+      :read-only="!canEdit('mods')"
       :disabled="isMoving"
       :moving-id="movingModId"
       :saved-id="savedModId"
@@ -25,7 +27,7 @@
   </main>
 
   <ModForm
-    v-if="isFormOpen"
+    v-if="isFormOpen && canEdit('mods')"
     :key="selectedMod?._id ?? 'new'"
     :mode="selectedMod ? 'edit' : 'create'"
     :mod="selectedMod"
@@ -37,16 +39,20 @@
 </template>
 
 <script setup>
+import { API_BASE, useApiClient } from '../utils/auth'
+import { provideVehicleAccess } from '../utils/vehicleAccess'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ModForm from '../components/ModForm.vue'
 import ModsBoard from '../components/ModsBoard.vue'
 import ModsHeader from '../components/ModsHeader.vue'
 import NavBar from '../components/NavBar.vue'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
 
 const route = useRoute()
+const carId = route.params.carId
 const car = ref(null)
+const { canView, canEdit } = provideVehicleAccess(car)
 const mods = ref([])
 const isLoading = ref(true)
 const loadFailed = ref(false)
@@ -57,8 +63,7 @@ const isFormOpen = ref(false)
 const isFormSaving = ref(false)
 const selectedMod = ref(null)
 let savedStateTimer
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const fetch = useApiClient()
 
 const carName = computed(() => {
   if (!car.value) return ''
@@ -71,14 +76,17 @@ onBeforeUnmount(() => window.clearTimeout(savedStateTimer))
 async function loadPage() {
   isLoading.value = true
   loadFailed.value = false
-  const [carLoaded, modsLoaded] = await Promise.all([fetchCar(), fetchMods()])
+  car.value = null
+  mods.value = []
+  const carLoaded = await fetchCar()
+  const modsLoaded = canView('mods') ? await fetchMods() : true
   loadFailed.value = !carLoaded || !modsLoaded
   isLoading.value = false
 }
 
 async function fetchCar() {
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}`)
+    const response = await fetch(`${API_BASE}/cars/${carId}`)
     if (!response.ok) return false
     car.value = await response.json()
     return true
@@ -88,11 +96,13 @@ async function fetchCar() {
 }
 
 async function fetchMods() {
+  if (!canView('mods')) return false
   try {
     const fetchedMods = []
     const pageSize = 100
     while (true) {
-      const response = await fetch(`${API_BASE}/cars/${route.params.carId}/planned-mods/?skip=${fetchedMods.length}&limit=${pageSize}`)
+      if (!canView('mods')) return false
+      const response = await fetch(`${API_BASE}/cars/${carId}/planned-mods/?skip=${fetchedMods.length}&limit=${pageSize}`)
       if (!response.ok) return false
       const page = await response.json()
       fetchedMods.push(...page)
@@ -106,10 +116,11 @@ async function fetchMods() {
 }
 
 async function handleCreateMod(payload) {
+  if (!canEdit('mods')) return
   if (isFormSaving.value) return
   isFormSaving.value = true
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/planned-mods/`, {
+    const response = await fetch(`${API_BASE}/cars/${carId}/planned-mods/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -128,10 +139,11 @@ async function handleCreateMod(payload) {
 }
 
 async function handleUpdateMod(payload) {
+  if (!canEdit('mods')) return
   if (!selectedMod.value || isFormSaving.value) return
   isFormSaving.value = true
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/planned-mods/${selectedMod.value._id}`, {
+    const response = await fetch(`${API_BASE}/cars/${carId}/planned-mods/${selectedMod.value._id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -150,8 +162,9 @@ async function handleUpdateMod(payload) {
 }
 
 async function handleDeleteMod(modId) {
+  if (!canEdit('mods')) return
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/planned-mods/${modId}`, { method: 'DELETE' })
+    const response = await fetch(`${API_BASE}/cars/${carId}/planned-mods/${modId}`, { method: 'DELETE' })
     if (!response.ok) throw new Error()
     mods.value = mods.value.filter(mod => mod._id !== modId)
     showToast('Part removed', 'success')
@@ -161,12 +174,13 @@ async function handleDeleteMod(modId) {
 }
 
 async function handleMoveMod(move) {
+  if (!canEdit('mods')) return
   if (isMoving.value) return
   isMoving.value = true
   movingModId.value = move.modId
   savedModId.value = ''
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/planned-mods/${move.modId}/move`, {
+    const response = await fetch(`${API_BASE}/cars/${carId}/planned-mods/${move.modId}/move`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: move.status, position: move.position })
@@ -189,11 +203,13 @@ async function handleMoveMod(move) {
 }
 
 function openCreateForm() {
+  if (!canEdit('mods')) return
   selectedMod.value = null
   isFormOpen.value = true
 }
 
 function openEditForm(mod) {
+  if (!canEdit('mods')) return
   selectedMod.value = mod
   isFormOpen.value = true
 }

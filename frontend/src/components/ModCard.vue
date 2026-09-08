@@ -32,7 +32,7 @@
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 13 13 7m-4 0h4v4M12 4h4v12H4V4h5" /></svg>
       </a>
       <span v-else class="no-link">No product link</span>
-      <div class="actions">
+      <div v-if="!readOnly" class="actions">
         <button type="button" class="edit" aria-label="Edit part" title="Edit part" @click="$emit('edit', mod)">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12 4 4 4-8 8H4v-4l8-8Zm-2 2 4 4" /></svg>
         </button>
@@ -55,6 +55,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
+  readOnly: Boolean,
   mod: { type: Object, required: true },
   isSaving: { type: Boolean, default: false },
   isSaved: { type: Boolean, default: false }

@@ -1,66 +1,23 @@
-from datetime import date
 from typing import List
 
-from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
+from backend.auth import get_maintenance_car
 from backend.models.car_model import CarModel
-from backend.models.maintenance_log import MaintenanceLog, MaintenanceReminder
-from backend.services.reminders import determine_due_reason, reminder_sort_key
-
+from backend.models.maintenance_log import MaintenanceReminder
+from backend.services.reminders import car_reminders
 
 router = APIRouter(prefix="/cars/{car_id}/reminders", tags=["Reminders"])
 
 
 @router.get("/", response_model=List[MaintenanceReminder])
 async def list_reminders(
-	car_id: PydanticObjectId,
-	only_due: bool = Query(False, description="Return only reminders that are currently due"),
-	skip: int = Query(0, ge=0),
-	limit: int = Query(100, ge=1, le=100),
+    car: CarModel = Depends(get_maintenance_car),
+    only_due: bool = Query(False),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
 ):
-	car = await CarModel.get(car_id)
-	if not car:
-		raise HTTPException(status_code=404, detail="Car not found")
-
-	maintenance_logs = await MaintenanceLog.find(MaintenanceLog.car_id == car_id).to_list()
-	current_date = date.today()
-	current_mileage = car.mileage if car.mileage is not None else car.initial_mileage
-
-	reminders = []
-	for maintenance_log in maintenance_logs:
-		if maintenance_log.id is None:
-			continue
-
-		is_due, due_reason = determine_due_reason(
-			maintenance_log.reminder_date,
-			maintenance_log.reminder_mileage,
-			current_date,
-			current_mileage,
-		)
-
-		if only_due and not is_due:
-			continue
-
-		reminders.append(
-			MaintenanceReminder(
-				log_id=maintenance_log.id,
-				car_id=maintenance_log.car_id,
-				date_of_service=maintenance_log.date_of_service,
-				mileage=maintenance_log.mileage,
-				work_done=maintenance_log.work_done,
-				reminder_date=maintenance_log.reminder_date,
-				reminder_mileage=maintenance_log.reminder_mileage,
-				current_mileage=current_mileage,
-				is_due=is_due,
-				due_reason=due_reason,
-			)
-		)
-
-	reminders.sort(
-		key=lambda reminder: (
-			reminder_sort_key(reminder.reminder_date, reminder.reminder_mileage),
-			str(reminder.log_id),
-		)
-	)
-	return reminders[skip:skip + limit]
+    reminders = await car_reminders(car)
+    if only_due:
+        reminders = [reminder for reminder in reminders if reminder.is_due]
+    return reminders[skip:skip + limit]

@@ -6,7 +6,7 @@
         <h1>{{ title }}</h1>
         <p>Move each part from idea to installed.</p>
       </div>
-      <button type="button" class="add-button" @click="$emit('add')">
+      <button v-if="!readOnly" type="button" class="add-button" @click="$emit('add')">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
         Add part
       </button>
@@ -48,6 +48,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
+  readOnly: Boolean,
   carName: { type: String, default: '' },
   mods: { type: Array, default: () => [] }
 })

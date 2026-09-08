@@ -69,7 +69,7 @@
               <div><h3>Schedule the next service</h3><p>Get a reminder by time, mileage, or whichever comes first.</p></div>
             </div>
             <label class="switch">
-              <input v-model="createReminder" type="checkbox" />
+              <input v-model="createReminder" type="checkbox" aria-label="Schedule next service" @change="reminderTouched = true" />
               <span aria-hidden="true"></span>
               {{ createReminder ? 'On' : 'Off' }}
             </label>
@@ -78,19 +78,21 @@
           <div v-if="createReminder" class="field-grid reminder-fields">
             <div class="field">
               <label for="interval_months">Time interval</label>
-              <div class="input-suffix"><input id="interval_months" v-model.number="intervalMonths" type="number" min="1" placeholder="e.g. 6" /><span>months</span></div>
+              <div class="input-suffix"><input id="interval_months" v-model.number="intervalMonths" type="number" min="1" placeholder="e.g. 6" @input="reminderTouched = true" /><span>months</span></div>
             </div>
             <div class="field">
               <label for="interval_miles">Mileage interval</label>
-              <div class="input-suffix"><input id="interval_miles" v-model.number="intervalMiles" type="number" min="1" placeholder="e.g. 5000" /><span>mi</span></div>
+              <div class="input-suffix"><input id="interval_miles" v-model.number="intervalMiles" type="number" min="1" placeholder="e.g. 5000" @input="reminderTouched = true" /><span>mi</span></div>
             </div>
-            <small v-if="submitted && !hasInterval" class="error interval-error">Enter a time or mileage interval.</small>
+            <small>Clear either interval to disable it, or both to remove the reminder.</small>
           </div>
+          <p v-if="defaultsLoading" role="status">Loading your oil service defaults...</p>
+          <p v-if="defaultsError" role="status">Could not load oil defaults. Set intervals manually or leave reminders off.</p>
         </section>
 
         <div class="actions">
           <button type="button" class="secondary" :disabled="isSaving" @click="$emit('close')">Cancel</button>
-          <button type="submit" class="primary" :disabled="isSaving">
+          <button type="submit" class="primary" :disabled="isSaving || defaultsLoading">
             <span v-if="isSaving" class="button-spinner"></span>
             {{ isSaving ? 'Saving...' : isEditMode ? 'Save changes' : 'Save service' }}
           </button>
@@ -102,6 +104,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useApiRequest } from '../utils/auth'
 
 const props = defineProps({
   mode: { type: String, default: 'create' },
@@ -122,11 +125,16 @@ const createReminder = ref(false)
 const intervalMonths = ref(null)
 const intervalMiles = ref(null)
 const submitted = ref(false)
+const reminderTouched = ref(false)
+const defaultsError = ref(false)
+const defaultsLoading = ref(false)
+const request = useApiRequest()
+let defaultsRequest
+const isOilChange = computed(() => /\boil\b/i.test(workDone.value) && /\bchang(?:e|ed|ing)\b/i.test(workDone.value))
 
 const isEditMode = computed(() => props.mode === 'edit')
 const hasMileage = computed(() => isEditMode.value || (mileage.value !== null && mileage.value !== '' && Number(mileage.value) >= 0))
 const hasCost = computed(() => isEditMode.value || (cost.value !== null && cost.value !== '' && Number(cost.value) >= 0))
-const hasInterval = computed(() => !createReminder.value || isPositive(intervalMonths.value) || isPositive(intervalMiles.value))
 
 watch(
   () => props.maintenance,
@@ -142,13 +150,31 @@ watch(
     intervalMonths.value = maintenance?.interval_months ?? null
     intervalMiles.value = maintenance?.interval_miles ?? null
     submitted.value = false
+    reminderTouched.value = false
   },
   { immediate: true }
 )
 
+watch(isOilChange, async oil => {
+  if (isEditMode.value || reminderTouched.value) return
+  if (!oil) { createReminder.value = false; intervalMiles.value = null; intervalMonths.value = null; return }
+  defaultsLoading.value = true
+  try {
+    defaultsRequest ??= request('/settings', undefined, 'GET')
+    const settings = await defaultsRequest
+    if (isEditMode.value || !isOilChange.value || reminderTouched.value) return
+    intervalMiles.value = settings.oil_interval_miles
+    intervalMonths.value = settings.oil_interval_months
+    createReminder.value = intervalMiles.value != null || intervalMonths.value != null
+    defaultsError.value = false
+  } catch (e) { if (e.name !== 'AbortError') defaultsError.value = true; defaultsRequest = undefined }
+  finally { defaultsLoading.value = false }
+})
+
 function handleSubmit() {
+  if (defaultsLoading.value || props.isSaving) return
   submitted.value = true
-  if (!serviceDate.value || !workDone.value.trim() || !hasMileage.value || !hasCost.value || !hasInterval.value) return
+  if (!serviceDate.value || !workDone.value.trim() || !hasMileage.value || !hasCost.value) return
 
   const payload = {
     date_of_service: serviceDate.value,

@@ -1,6 +1,5 @@
 <template>
   <NavBar />
-  <Toast />
 
   <main class="nhtsa-page">
     <header class="page-header">
@@ -168,14 +167,18 @@
 </template>
 
 <script setup>
+import { API_BASE, useApiClient } from '../utils/auth'
+import { provideVehicleAccess } from '../utils/vehicleAccess'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import Toast, { showToast } from '../components/Toast.vue'
+import { showToast } from '../components/Toast.vue'
 import NavBar from '../components/NavBar.vue'
 
 const route = useRoute()
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
-const API_BASE = envApiBase || `${window.location.protocol}//${window.location.hostname}:8000`
+const carId = route.params.carId
+const fetch = useApiClient()
+const car = ref(null)
+const { canView } = provideVehicleAccess(car)
 
 const data = ref(null)
 const loading = ref(true)
@@ -240,8 +243,14 @@ onMounted(loadData)
 async function loadData() {
   loading.value = true
   loadError.value = ''
+  car.value = null
+  data.value = null
   try {
-    const response = await fetch(`${API_BASE}/cars/${route.params.carId}/nhtsa/`)
+    const vehicleResponse = await fetch(`${API_BASE}/cars/${carId}`)
+    if (!vehicleResponse.ok) throw new Error('Unable to load vehicle access.')
+    car.value = await vehicleResponse.json()
+    if (!canView('vehicle')) throw new Error('Vehicle access is unavailable.')
+    const response = await fetch(`${API_BASE}/cars/${carId}/nhtsa/`)
     if (!response.ok) {
       const body = await response.json().catch(() => ({}))
       throw new Error(body.detail || 'Failed to fetch NHTSA data')

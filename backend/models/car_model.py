@@ -3,6 +3,8 @@ from typing import Optional
 from datetime import date
 from enum import Enum
 from beanie import Document, PydanticObjectId
+from pymongo import ASCENDING, IndexModel
+from backend.models.car_share import CarAccess
 
 
 MAX_VEHICLE_YEAR = date.today().year + 1
@@ -66,12 +68,15 @@ class CarUpdate(BaseModel):
 
 class CarModel(Document, CarFields):
     is_deleting: bool = False
+    owner_id: Optional[PydanticObjectId] = None
 
     class Settings:
         name = "cars"
+        indexes = [IndexModel([("owner_id", ASCENDING), ("_id", ASCENDING)], name="car_owner")]
 
 
 class CarResponse(CarFields):
     id: PydanticObjectId = Field(serialization_alias="_id")
+    access: CarAccess
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

@@ -1,5 +1,8 @@
 from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from backend.auth import get_maintenance_car, get_current_user
+from backend.models.user import User
+from backend.models.notification import UserPreferences, ReminderPreferences
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import (
     MaintenanceLog,
@@ -9,12 +12,22 @@ from backend.models.maintenance_log import (
 from typing import List
 
 from backend.services.maintenance import create_log
-from backend.services.reminders import calculate_next_reminder
+from backend.services.reminders import calculate_next_reminder, is_oil_change
 
 router = APIRouter(prefix="/cars/{car_id}/logs", tags=["Maintenance Logs"])
 
 @router.post("/", response_model=MaintenanceLog, status_code=201)
-async def create_maintenance_log(car_id: PydanticObjectId, log_data: MaintenanceLogCreate):
+async def create_maintenance_log(
+    car_id: PydanticObjectId,
+    log_data: MaintenanceLogCreate,
+    _: CarModel = Depends(get_maintenance_car),
+    user: User = Depends(get_current_user),
+):
+    if is_oil_change(log_data.work_done):
+        preferences = await UserPreferences.find_one(UserPreferences.user_id == user.id) or ReminderPreferences()
+        defaults = {field: getattr(preferences, f"oil_{field}") for field in ("interval_miles", "interval_months")
+                    if field not in log_data.model_fields_set}
+        log_data = log_data.model_copy(update=defaults)
     return await create_log(car_id, log_data)
 
 @router.get("/", response_model=List[MaintenanceLog])
@@ -22,7 +35,8 @@ async def get_maintenance_logs(car_id: PydanticObjectId, done_by: str | None = N
                                min_cost: float | None = None, max_cost: float | None = None,
                                sort_by: str | None = None, sort_order: str = "asc",
                                skip: int = Query(0, ge=0),
-                               limit: int = Query(100, ge=1, le=100)):
+                               limit: int = Query(100, ge=1, le=100),
+                               _: CarModel = Depends(get_maintenance_car)):
 
     VALID_SORT_FIELDS = {"date_of_service", "cost", "mileage", "done_by", "work_done"}
     if sort_by is not None and sort_by not in VALID_SORT_FIELDS:
@@ -33,10 +47,6 @@ async def get_maintenance_logs(car_id: PydanticObjectId, done_by: str | None = N
 
     if min_cost is not None and max_cost is not None and min_cost > max_cost:
         raise HTTPException(status_code=400, detail="min_cost must be <= max_cost")
-
-    car = await CarModel.get(car_id)
-    if not car:
-        raise HTTPException(status_code=404, detail="Car not found")
 
     query = MaintenanceLog.find(MaintenanceLog.car_id == car_id)
     if done_by is not None:
@@ -60,12 +70,11 @@ async def get_maintenance_logs(car_id: PydanticObjectId, done_by: str | None = N
     return maintenance_logs
 
 @router.get("/{log_id}", response_model=MaintenanceLog)
-async def get_maintenance_log(car_id: PydanticObjectId, log_id: PydanticObjectId):
-    car = await CarModel.get(car_id)
-
-    if not car:
-        raise HTTPException(status_code=404, detail="Car not found")
-
+async def get_maintenance_log(
+    car_id: PydanticObjectId,
+    log_id: PydanticObjectId,
+    _: CarModel = Depends(get_maintenance_car),
+):
     maintenance_log = await MaintenanceLog.find_one(
         MaintenanceLog.id == log_id,
         MaintenanceLog.car_id == car_id
@@ -81,12 +90,8 @@ async def update_maintenance_log(
     car_id: PydanticObjectId,
     log_id: PydanticObjectId,
     log_data: MaintenanceLogUpdate,
+    _: CarModel = Depends(get_maintenance_car),
 ):
-    car = await CarModel.get(car_id)
-
-    if not car:
-        raise HTTPException(status_code=404, detail="Car not found")
-
     update_data = log_data.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
@@ -135,12 +140,11 @@ async def update_maintenance_log(
     return maintenance_log
 
 @router.delete("/{log_id}", status_code=204)
-async def delete_maintenance_log(car_id: PydanticObjectId, log_id: PydanticObjectId):
-    car = await CarModel.get(car_id)
-
-    if not car:
-        raise HTTPException(status_code=404, detail="Car not found")
-
+async def delete_maintenance_log(
+    car_id: PydanticObjectId,
+    log_id: PydanticObjectId,
+    _: CarModel = Depends(get_maintenance_car),
+):
     maintenance_log = await MaintenanceLog.get(log_id)
 
     if not maintenance_log or maintenance_log.car_id != car_id:
