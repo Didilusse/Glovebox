@@ -1,56 +1,122 @@
 services:
-
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: glovebox-frontend
     restart: unless-stopped
     ports:
-      - "5173:80"
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:5173:8080"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
-      - glovebox-network
+      edge:
+        ipv4_address: 172.30.0.10
+    read_only: true
+    tmpfs:
+      - /tmp:uid=1000,gid=1000,mode=1770
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 256m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: glovebox-api
     restart: unless-stopped
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017
-      - DATABASE_NAME=${DATABASE_NAME:-glovebox}
-      - SESSION_TTL_DAYS=${SESSION_TTL_DAYS:-30}
-      - SETUP_TOKEN_REQUIRED=true
-      - SETUP_TOKEN=${SETUP_TOKEN:-}
-      - FORWARDED_ALLOW_IPS=*
-      - REMINDER_WORKER_ENABLED=${REMINDER_WORKER_ENABLED:-true}
-      - REMINDER_CHECK_SECONDS=${REMINDER_CHECK_SECONDS:-60}
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - SMTP_FROM=${SMTP_FROM:-}
-      - SMTP_STARTTLS=${SMTP_STARTTLS:-true}
+      MONGODB_URI: mongodb://mongodb:27017/${DATABASE_NAME:?Set DATABASE_NAME}
+      DATABASE_NAME: ${DATABASE_NAME:?Set DATABASE_NAME}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      API_DOCS_ENABLED: "false"
+      SETUP_TOKEN_REQUIRED: "true"
+      SETUP_TOKEN: ${SETUP_TOKEN:?Generate and set a setup token of at least 32 characters}
+      FORWARDED_ALLOW_IPS: 172.30.0.10
+      REMINDER_WORKER_ENABLED: ${REMINDER_WORKER_ENABLED:-true}
+      REMINDER_CHECK_SECONDS: ${REMINDER_CHECK_SECONDS:-60}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    command:
+      - uvicorn
+      - backend.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --proxy-headers
+      - --forwarded-allow-ips=172.30.0.10
     networks:
-      - glovebox-network
+      edge:
+        ipv4_address: 172.30.0.20
+      database:
+        ipv4_address: 172.31.0.20
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=1770
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+    mem_limit: 512m
+    cpus: 1.5
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/auth/status', timeout=4).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   mongodb:
-    image: mongo:7
-    container_name: glovebox-db
+    image: mongo:7.0.14@sha256:0032d2ca20db5fa34926f196c8a43b74e34ed239a7f2453ff1505b6f12ba8ea6
     restart: unless-stopped
     volumes:
       - glovebox-mongodb-data:/data/db
     networks:
-      - glovebox-network
+      database:
+        ipv4_address: 172.31.0.10
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 300
+    mem_limit: 1g
+    cpus: 2.0
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --host 127.0.0.1 --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   glovebox-mongodb-data:
 
 networks:
-  glovebox-network:
+  edge:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  database:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
