@@ -28,7 +28,7 @@ async function render(component, path = '/', garage = { template: '<p>Private ga
   ] })
   await router.push(path)
   await router.isReady()
-  wrapper = mount(component, { global: { plugins: [router] } })
+  wrapper = mount(component, { global: { plugins: [router], stubs: { AccountControls: true, DueAlerts: true } } })
   await flushPromises()
   return router
 }
@@ -100,9 +100,13 @@ describe('auth flows', () => {
   it('offers add and skip after setup and reuses CarForm', async () => {
     setSession('admin-token', admin)
     await render(WelcomeView, '/welcome')
-    expect(wrapper.find('a[href="/"]').text()).toBe('Skip for now')
+    expect(wrapper.find('.welcome-actions a[href="/"]').text()).toBe('Skip for now')
     await wrapper.findAll('button').find(button => button.text() === 'Add a car').trigger('click')
     expect(wrapper.findComponent({ name: 'CarForm' }).exists()).toBe(true)
+    expect(wrapper.find('.welcome-content').exists()).toBe(false)
+    await wrapper.findComponent({ name: 'CarForm' }).vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.find('.welcome-content').exists()).toBe(true)
   })
   it('keeps the account signed in after changing its password', async () => {
     setSession('session-token', member)
