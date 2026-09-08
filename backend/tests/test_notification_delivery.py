@@ -59,19 +59,35 @@ def record(ip):
 
 @pytest.fixture
 def https(monkeypatch):
-    dns = MagicMock(return_value=[record("8.8.8.8")])
-    monkeypatch.setattr(delivery.socket, "getaddrinfo", dns)
+    resolver = MagicMock()
+    resolver.answers = ["8.8.8.8"]
+
+    def resolve(_host, record_type, **_kwargs):
+        if record_type == "A":
+            return resolver.answers
+        raise delivery.dns.resolver.NoAnswer
+
+    resolver.resolve.side_effect = resolve
+    monkeypatch.setattr(delivery.dns.resolver, "Resolver", MagicMock(return_value=resolver))
     connection = MagicMock()
     connection.getresponse.return_value.status = 204
     factory = MagicMock(return_value=connection)
     monkeypatch.setattr(delivery, "_PinnedHTTPSConnection", factory)
-    return dns, factory, connection
+    return resolver.resolve, factory, connection
 
 
 @pytest.mark.parametrize("ip", ["127.0.0.1", "10.0.0.1", "100.64.0.1", "::1", "fc00::1", "192.0.2.1"])
 def test_all_dns_results_must_be_public(https, ip):
     dns, factory, _ = https
-    dns.return_value.append(record(ip))
+
+    def resolve(_host, record_type, **_kwargs):
+        if record_type == ("AAAA" if ":" in ip else "A"):
+            return [ip]
+        if record_type == "A":
+            return ["8.8.8.8"]
+        raise delivery.dns.resolver.NoAnswer
+
+    dns.side_effect = resolve
     with pytest.raises(delivery.DeliveryError):
         asyncio.run(delivery.deliver("webhook", "https://example.com/secret", "Title", "Body"))
     factory.assert_not_called()
@@ -83,7 +99,9 @@ def test_post_payload_and_no_body_read(https, channel):
     url = "https://discord.com/api/webhooks/123/secret?wait=true"
     asyncio.run(delivery.deliver(channel, url, "Title", "@everyone Body"))
     factory.assert_called_once_with("discord.com", socket.AF_INET, ("8.8.8.8", 443))
-    dns.assert_called_once()
+    assert dns.call_count == 2
+    assert all(0 < call.kwargs["lifetime"] <= delivery._DNS_TIMEOUT for call in dns.call_args_list)
+    assert all(call.kwargs["search"] is False for call in dns.call_args_list)
     args, kwargs = connection.request.call_args
     assert args == ("POST", "/api/webhooks/123/secret?wait=true")
     payload = json.loads(kwargs["body"])

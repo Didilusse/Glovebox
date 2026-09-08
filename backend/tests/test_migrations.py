@@ -48,3 +48,13 @@ def test_default_migration_backfills_mod_planning_defaults_without_overwriting_v
         assert existing["install_method"] == "shop"
 
     asyncio.run(run_test())
+
+
+def test_migration_creates_quota_resource_index():
+    async def run_test():
+        database = AsyncMongoMockClient().glovebox
+        await apply_default_migrations(database)
+        indexes = await database.quota_slots.index_information()
+        assert indexes["quota_resource"]["unique"] is True
+
+    asyncio.run(run_test())

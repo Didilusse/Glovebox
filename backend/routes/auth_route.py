@@ -11,7 +11,7 @@ from backend.auth import (
     hash_password,
     verify_password,
     DUMMY_PASSWORD_HASH,
-    throttle_login,
+    throttle_auth,
 )
 from backend.config import settings
 from backend.database import recover_legacy_claim
@@ -33,14 +33,17 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 async def auth_status():
     return {
         "setup_required": await User.find_all().count() == 0,
-        "setup_token_required": settings.setup_token is not None,
+        "setup_token_required": settings.setup_token_required or settings.setup_token is not None,
     }
 
 
 @router.post("/setup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def setup(payload: SetupRequest, x_setup_token: str | None = Header(default=None)):
-    if settings.setup_token is not None and not secrets.compare_digest(
-        (x_setup_token or "").encode("utf-8"), settings.setup_token.get_secret_value().encode("utf-8")
+async def setup(payload: SetupRequest, request: Request, x_setup_token: str | None = Header(default=None)):
+    await throttle_auth(request, payload.username)
+    configured_token = settings.setup_token.get_secret_value() if settings.setup_token is not None else None
+    if (settings.setup_token_required and configured_token is None) or (
+        configured_token is not None
+        and not secrets.compare_digest((x_setup_token or "").encode("utf-8"), configured_token.encode("utf-8"))
     ):
         raise HTTPException(status_code=403, detail="Invalid setup token")
     if await User.find_all().count() > 0:
@@ -64,7 +67,7 @@ async def setup(payload: SetupRequest, x_setup_token: str | None = Header(defaul
 
 @router.post("/login", response_model=AuthResponse)
 async def login(payload: LoginRequest, request: Request):
-    throttle_login(request)
+    await throttle_auth(request, payload.username)
     user = await User.find_one(User.username == payload.username.strip().lower())
     valid = await run_in_threadpool(
         verify_password, payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH

@@ -1,3 +1,4 @@
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, get_ident
 
@@ -23,15 +24,18 @@ def test_setup_token_and_configuration(raw_client, monkeypatch):
     token = "operator-secret-" * 3
     monkeypatch.setattr(settings, "setup_token", SecretStr(token))
     assert raw_client.get("/auth/status").json()["setup_token_required"] is True
-    payload = {"username": "admin", "password": "password123"}
+    payload = {"username": "admin", "password": "password1234"}
     for headers in ({}, {"X-Setup-Token": "wrong"}):
         assert raw_client.post("/auth/setup", json=payload, headers=headers).status_code == 403
     assert raw_client.post("/auth/setup", json=payload, headers={"X-Setup-Token": token}).status_code == 201
-    assert Settings(_env_file=None, FRONTEND_URL="unused").session_ttl_days == 30
+    monkeypatch.delenv("SETUP_TOKEN_REQUIRED", raising=False)
+    defaults = Settings(_env_file=None, setup_token=SecretStr(token), FRONTEND_URL="unused")
+    assert defaults.session_ttl_days == 7
+    assert defaults.setup_token_required is True
     for invalid in (
         {"session_ttl_days": 0}, {"session_ttl_days": 366},
         {"login_max_attempts": 0}, {"login_window_seconds": 0},
-        {"login_max_buckets": 100001}, {"setup_token_required": True, "setup_token": None},
+        {"setup_token_required": True, "setup_token": None},
         {"setup_token": "short"},
     ):
         with pytest.raises(ValidationError):
@@ -49,7 +53,7 @@ def test_concurrent_setup_has_one_durable_winner(raw_client, monkeypatch):
     monkeypatch.setattr(auth_route, "hash_password", paused_hash)
     with ThreadPoolExecutor(max_workers=2) as pool:
         responses = list(pool.map(lambda name: raw_client.post(
-            "/auth/setup", json={"username": name, "password": "password123"}
+            "/auth/setup", json={"username": name, "password": "password1234"}
         ), ["first", "second"]))
     assert sorted(response.status_code for response in responses) == [201, 403]
 
@@ -94,16 +98,25 @@ def test_passwords_use_all_bytes_and_preserve_whitespace(raw_client):
     assert raw_client.post("/auth/login", json={"username": "admin", "password": new_password}).status_code == 200
 
 
-def test_legacy_bcrypt_never_accepts_truncated_input():
+def test_legacy_bcrypt_never_accepts_truncated_input(monkeypatch):
     hashed = bcrypt.hashpw(b"a" * 72, bcrypt.gensalt()).decode()
+    calls = []
+    original = auth.bcrypt.checkpw
+
+    def checkpw(password, password_hash):
+        calls.append(password)
+        return original(password, password_hash)
+
+    monkeypatch.setattr(auth.bcrypt, "checkpw", checkpw)
     assert auth.verify_password("a" * 72, hashed)
     assert not auth.verify_password("a" * 72 + "different", hashed)
+    assert calls == [b"a" * 72, b"a" * 72]
 
 
 def test_unknown_login_verifies_dummy_in_worker(raw_client, monkeypatch):
     from argon2.exceptions import VerifyMismatchError
     with pytest.raises(VerifyMismatchError):
-        auth.password_hasher.verify(auth.DUMMY_PASSWORD_HASH, "password123")
+        auth.password_hasher.verify(auth.DUMMY_PASSWORD_HASH, "password1234")
     loop_thread = raw_client.portal.call(get_ident)
     calls = []
     original = auth.verify_password
@@ -113,26 +126,64 @@ def test_unknown_login_verifies_dummy_in_worker(raw_client, monkeypatch):
         return original(password, hashed)
 
     monkeypatch.setattr(auth_route, "verify_password", verify)
-    assert raw_client.post("/auth/login", json={"username": "unknown", "password": "password123"}).status_code == 401
+    assert raw_client.post("/auth/login", json={"username": "unknown", "password": "password1234"}).status_code == 401
     assert calls == [(calls[0][0], auth.DUMMY_PASSWORD_HASH)]
     assert calls[0][0] != loop_thread
 
 
-def test_login_throttle_is_bounded_and_expires(raw_client, monkeypatch):
+def test_login_throttle_uses_bounded_mongo_keys_for_account_and_ip(raw_client, monkeypatch):
     monkeypatch.setattr(settings, "login_max_attempts", 1)
-    monkeypatch.setattr(settings, "login_max_buckets", 1)
-    payload = {"username": "unknown", "password": "password123"}
+    payload = {"username": "unknown", "password": "password1234"}
     assert raw_client.post("/auth/login", json=payload).status_code == 401
     response = raw_client.post("/auth/login", json={**payload, "username": "another"})
     assert response.status_code == 429
+    assert response.json() == {"detail": "Too many authentication attempts"}
     assert int(response.headers["Retry-After"]) > 0
+
     from starlette.requests import Request
-    with pytest.raises(HTTPException) as exc:
-        auth.throttle_login(Request({"type": "http", "client": ("another-host", 1)}))
-    assert exc.value.status_code == 429
-    assert len(auth.login_buckets) == 1
-    auth.login_buckets["testclient"] = (0, 1)
-    assert raw_client.post("/auth/login", json=payload).status_code == 401
+
+    async def check_account_limit_and_indexes():
+        with pytest.raises(HTTPException) as exc:
+            await auth.throttle_auth(Request({"type": "http", "client": ("another-host", 1)}), " UNKNOWN ")
+        assert exc.value.status_code == 429
+        buckets = await auth.LoginRateLimit.find_all().to_list()
+        assert all(len(bucket.key) < 100 for bucket in buckets)
+        indexes = await auth.LoginRateLimit.get_pymongo_collection().index_information()
+        assert indexes["unique_rate_limit_key"]["unique"] is True
+        assert indexes["rate_limit_expiry"]["expireAfterSeconds"] == 0
+
+    raw_client.portal.call(check_account_limit_and_indexes)
+
+
+def test_setup_is_rate_limited_before_token_validation(raw_client, monkeypatch):
+    monkeypatch.setattr(settings, "login_max_attempts", 1)
+    monkeypatch.setattr(settings, "setup_token", SecretStr("operator-secret-" * 3))
+    payload = {"username": "admin", "password": "password1234"}
+    assert raw_client.post("/auth/setup", json=payload, headers={"X-Setup-Token": "wrong"}).status_code == 403
+    response = raw_client.post("/auth/setup", json=payload, headers={"X-Setup-Token": "operator-secret-" * 3})
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Too many authentication attempts"}
+
+
+def test_login_limit_boundary_is_atomic(raw_client, monkeypatch):
+    monkeypatch.setattr(settings, "login_max_attempts", 1)
+    from starlette.requests import Request
+
+    async def race():
+        request = Request({"type": "http", "client": ("race-client", 1)})
+        results = await asyncio.gather(
+            auth.throttle_auth(request, "Racer"),
+            auth.throttle_auth(request, " racer "),
+            return_exceptions=True,
+        )
+        assert sum(result is None for result in results) == 1
+        errors = [result for result in results if isinstance(result, HTTPException)]
+        assert len(errors) == 1
+        assert errors[0].status_code == 429
+        buckets = await auth.LoginRateLimit.find_all().to_list()
+        assert all(bucket.attempts == 1 for bucket in buckets)
+
+    raw_client.portal.call(race)
 
 
 def test_duplicate_username_insert_race_maps_to_conflict(api_client, monkeypatch):
@@ -145,7 +196,7 @@ def test_duplicate_username_insert_race_maps_to_conflict(api_client, monkeypatch
     monkeypatch.setattr(users_route, "hash_password", paused_hash)
     with ThreadPoolExecutor(max_workers=2) as pool:
         responses = list(pool.map(lambda _: api_client.post(
-            "/users/", json={"username": "mechanic", "password": "password123"}
+            "/users/", json={"username": "mechanic", "password": "password1234"}
         ), range(2)))
     assert sorted(response.status_code for response in responses) == [201, 409]
 
@@ -159,7 +210,7 @@ def test_reset_between_verification_and_session_insert(api_client, monkeypatch):
         return await original(user)
 
     monkeypatch.setattr(auth_route, "create_session", reset_then_create)
-    assert api_client.post("/auth/login", json={"username": "mechanic", "password": "password123"}).status_code == 401
+    assert api_client.post("/auth/login", json={"username": "mechanic", "password": "password1234"}).status_code == 401
 
     async def check_late_session():
         user = await User.get(PydanticObjectId(created["_id"]))
@@ -174,7 +225,7 @@ def test_reset_between_verification_and_session_insert(api_client, monkeypatch):
 
 def test_password_change_cannot_overwrite_concurrent_reset(api_client, monkeypatch):
     created = create_user(api_client, "mechanic")
-    headers = auth_headers_for(api_client, "mechanic", "password123")
+    headers = auth_headers_for(api_client, "mechanic", "password1234")
     original = auth_route.run_in_threadpool
 
     async def reset_before_password_write(function, *args):
@@ -187,7 +238,7 @@ def test_password_change_cannot_overwrite_concurrent_reset(api_client, monkeypat
 
     monkeypatch.setattr(auth_route, "run_in_threadpool", reset_before_password_write)
     assert api_client.post("/auth/password", headers=headers, json={
-        "current_password": "password123", "new_password": "stale-password",
+        "current_password": "password1234", "new_password": "stale-password",
     }).status_code == 409
     assert api_client.get("/auth/me", headers=headers).status_code == 401
     assert api_client.post("/auth/login", json={"username": "mechanic", "password": "operator-password"}).status_code == 200
@@ -198,7 +249,7 @@ def test_carfax_vin_is_owner_scoped(api_client, monkeypatch):
     vin = preview["report"]["vin"]
     api_client.post("/cars/", json={"make": "Honda", "model": "Accord", "year": 2011, "vin": vin})
     create_user(api_client, "mechanic")
-    api_client.default_headers = auth_headers_for(api_client, "mechanic", "password123")
+    api_client.default_headers = auth_headers_for(api_client, "mechanic", "password1234")
     assert _preview(api_client, monkeypatch).status_code == 200
     payload = {"report_vin": vin, "vehicle": {"make": "Honda", "model": "Accord", "year": 2011, "vin": vin, "mileage": 108707},
                "records": _records(preview)}
@@ -208,7 +259,7 @@ def test_carfax_vin_is_owner_scoped(api_client, monkeypatch):
 
 def test_delete_disables_user_and_marks_cars_before_cascade(api_client, monkeypatch):
     created = create_user(api_client, "mechanic")
-    headers = auth_headers_for(api_client, "mechanic", "password123")
+    headers = auth_headers_for(api_client, "mechanic", "password1234")
     car = api_client.post("/cars/", headers=headers, json={"make": "Honda", "model": "Civic", "year": 2020}).json()
     original = CarModel.delete
 
@@ -221,7 +272,7 @@ def test_delete_disables_user_and_marks_cars_before_cascade(api_client, monkeypa
     with pytest.raises(RuntimeError, match="interrupted cascade"):
         api_client.delete(f"/users/{created['_id']}")
     assert api_client.get("/auth/me", headers=headers).status_code == 401
-    assert api_client.post("/auth/login", json={"username": "mechanic", "password": "password123"}).status_code == 401
+    assert api_client.post("/auth/login", json={"username": "mechanic", "password": "password1234"}).status_code == 401
     monkeypatch.setattr(CarModel, "delete", original)
     assert api_client.delete(f"/users/{created['_id']}").status_code == 204
     assert api_client.get(f"/cars/{car['_id']}", headers=headers).status_code == 401
@@ -229,7 +280,7 @@ def test_delete_disables_user_and_marks_cars_before_cascade(api_client, monkeypa
 
 def test_car_insert_racing_account_delete_is_compensated(api_client, monkeypatch):
     created = create_user(api_client, "mechanic")
-    headers = auth_headers_for(api_client, "mechanic", "password123")
+    headers = auth_headers_for(api_client, "mechanic", "password1234")
     original = CarModel.insert
 
     async def insert_after_delete(car, *args, **kwargs):
@@ -270,7 +321,7 @@ def test_deleting_car_rejected_by_all_owned_routes(api_client):
 
 def test_mod_save_racing_cascade_does_not_leave_orphan(api_client, monkeypatch):
     created = create_user(api_client, "mechanic")
-    headers = auth_headers_for(api_client, "mechanic", "password123")
+    headers = auth_headers_for(api_client, "mechanic", "password1234")
     car = api_client.post("/cars/", headers=headers, json={"make": "Honda", "model": "Civic", "year": 2020}).json()
     base = f"/cars/{car['_id']}/planned-mods"
     mod = api_client.post(base + "/", headers=headers, json={

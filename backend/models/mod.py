@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Annotated, Optional
 
 from beanie import Document, PydanticObjectId
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints, field_validator, model_validator
 
 
 PartNumber = Annotated[
@@ -76,6 +76,13 @@ class ModItemCreate(BaseModel):
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+    @field_validator("url")
+    @classmethod
+    def require_https_url(cls, value):
+        if value is not None and value.scheme != "https":
+            raise ValueError("Product links must use HTTPS")
+        return value
+
 class ModItemUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     type: Optional[ModType] = None
@@ -97,6 +104,13 @@ class ModItemUpdate(BaseModel):
     notes: Optional[str] = Field(None, max_length=5000)
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    @field_validator("url")
+    @classmethod
+    def require_https_url(cls, value):
+        if value is not None and value.scheme != "https":
+            raise ValueError("Product links must use HTTPS")
+        return value
 
     @model_validator(mode="after")
     def reject_null_for_required_fields(self):

@@ -13,6 +13,7 @@ from backend.models.mod import ModItem
 from backend.models.session import AuthSession
 from backend.models.notification import Notification, UserPreferences
 from backend.models.user import PasswordReset, User, UserCreate, UserResponse
+from backend.services.quotas import release_car_quotas, release_scope
 
 router = APIRouter(
     prefix="/users",
@@ -84,9 +85,12 @@ async def delete_user(user_id: PydanticObjectId, current_user: User = Depends(re
         await ModItem.find(ModItem.car_id == car.id).delete()
         await CarShare.find(CarShare.car_id == car.id).delete()
         await car.delete()
+        await release_car_quotas(car.id)
 
     await AuthSession.find(AuthSession.user_id == user_id).delete()
     await CarShare.find(CarShare.user_id == user_id).delete()
     await Notification.find(Notification.user_id == user_id).delete()
+    await release_scope("notifications", user_id)
+    await release_scope("cars", user_id)
     await UserPreferences.find(UserPreferences.user_id == user_id).delete()
     await user.delete()

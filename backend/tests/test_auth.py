@@ -7,7 +7,7 @@ def test_status_and_setup_creates_first_admin(raw_client):
 
     response = raw_client.post(
         "/auth/setup",
-        json={"username": "Admin", "password": "longenough1"},
+        json={"username": "Admin", "password": "longenough12"},
     )
     assert response.status_code == 201, response.text
     payload = response.json()
@@ -25,19 +25,19 @@ def test_status_and_setup_creates_first_admin(raw_client):
 
 def test_setup_rejects_second_admin_and_weak_payloads(raw_client):
     assert raw_client.post(
-        "/auth/setup", json={"username": "has space", "password": "longenough1"}
+        "/auth/setup", json={"username": "has space", "password": "longenough12"}
     ).status_code == 422
 
     assert raw_client.post(
-        "/auth/setup", json={"username": "admin", "password": "longenough1"}
+        "/auth/setup", json={"username": "admin", "password": "longenough12"}
     ).status_code == 201
 
     assert raw_client.post(
-        "/auth/setup", json={"username": "other", "password": "longenough2"}
+        "/auth/setup", json={"username": "other", "password": "longenough23"}
     ).status_code == 403
 
     assert raw_client.post(
-        "/auth/setup", json={"username": "short", "password": "abc"}
+        "/auth/setup", json={"username": "short", "password": "12345678901"}
     ).status_code == 422
 
 
@@ -50,7 +50,7 @@ def test_setup_claims_preexisting_ownerless_cars(raw_client):
     car = raw_client.portal.call(insert_ownerless_car)
 
     payload = raw_client.post(
-        "/auth/setup", json={"username": "admin", "password": "longenough1"}
+        "/auth/setup", json={"username": "admin", "password": "longenough12"}
     ).json()
     headers = {"Authorization": f"Bearer {payload['token']}"}
 
@@ -59,7 +59,7 @@ def test_setup_claims_preexisting_ownerless_cars(raw_client):
 
 
 def test_login_and_logout(raw_client):
-    raw_client.post("/auth/setup", json={"username": "admin", "password": "longenough1"})
+    raw_client.post("/auth/setup", json={"username": "admin", "password": "longenough12"})
 
     wrong_password = raw_client.post(
         "/auth/login", json={"username": "admin", "password": "wrongpassword"}
@@ -67,12 +67,12 @@ def test_login_and_logout(raw_client):
     assert wrong_password.status_code == 401
 
     unknown_user = raw_client.post(
-        "/auth/login", json={"username": "ghost", "password": "longenough1"}
+        "/auth/login", json={"username": "ghost", "password": "longenough12"}
     )
     assert unknown_user.status_code == 401
 
     login = raw_client.post(
-        "/auth/login", json={"username": "admin", "password": "longenough1"}
+        "/auth/login", json={"username": "admin", "password": "longenough12"}
     )
     assert login.status_code == 200
     headers = {"Authorization": f"Bearer {login.json()['token']}"}
@@ -84,7 +84,7 @@ def test_login_and_logout(raw_client):
 
 
 def test_protected_routes_reject_missing_tokens(raw_client):
-    raw_client.post("/auth/setup", json={"username": "admin", "password": "longenough1"})
+    raw_client.post("/auth/setup", json={"username": "admin", "password": "longenough12"})
 
     assert raw_client.get("/cars/").status_code == 401
     assert raw_client.get("/auth/me").status_code == 401
@@ -93,25 +93,25 @@ def test_protected_routes_reject_missing_tokens(raw_client):
 
 def test_change_password_revokes_other_sessions(raw_client):
     setup_payload = raw_client.post(
-        "/auth/setup", json={"username": "admin", "password": "longenough1"}
+        "/auth/setup", json={"username": "admin", "password": "longenough12"}
     ).json()
     first = {"Authorization": f"Bearer {setup_payload['token']}"}
 
     second_token = raw_client.post(
-        "/auth/login", json={"username": "admin", "password": "longenough1"}
+        "/auth/login", json={"username": "admin", "password": "longenough12"}
     ).json()["token"]
     second = {"Authorization": f"Bearer {second_token}"}
 
     wrong_current = raw_client.post(
         "/auth/password",
-        json={"current_password": "wrong", "new_password": "longenough2"},
+        json={"current_password": "wrong", "new_password": "longenough23"},
         headers=first,
     )
     assert wrong_current.status_code == 400
 
     change = raw_client.post(
         "/auth/password",
-        json={"current_password": "longenough1", "new_password": "longenough2"},
+        json={"current_password": "longenough12", "new_password": "longenough23"},
         headers=first,
     )
     assert change.status_code == 204
@@ -121,18 +121,18 @@ def test_change_password_revokes_other_sessions(raw_client):
     assert raw_client.get("/auth/me", headers=second).status_code == 401
 
     relogin = raw_client.post(
-        "/auth/login", json={"username": "admin", "password": "longenough2"}
+        "/auth/login", json={"username": "admin", "password": "longenough23"}
     )
     assert relogin.status_code == 200
     assert raw_client.post(
-        "/auth/login", json={"username": "admin", "password": "longenough1"}
+        "/auth/login", json={"username": "admin", "password": "longenough12"}
     ).status_code == 401
 
 
 def test_created_user_can_log_in_and_sees_empty_garage(api_client):
-    create_user(api_client, "mechanic", "password123")
+    create_user(api_client, "mechanic", "password1234")
 
-    headers = auth_headers_for(api_client, "mechanic", "password123")
+    headers = auth_headers_for(api_client, "mechanic", "password1234")
     me = api_client.get("/auth/me", headers=headers)
     assert me.status_code == 200
     assert me.json()["is_admin"] is False

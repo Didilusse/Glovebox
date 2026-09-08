@@ -5,7 +5,7 @@ from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog
 from backend.models.mod import ModItem
 from backend.models.session import AuthSession
-from backend.models.user import User
+from backend.models.user import LoginRateLimit, User
 from backend.models.car_share import CarShare
 from backend.models.notification import Notification, UserPreferences
 from backend.migrations import apply_default_migrations
@@ -27,7 +27,8 @@ async def init_db():
             Notification,
             UserPreferences,
             User,
-            AuthSession
+            AuthSession,
+            LoginRateLimit,
         ]
     )
     await apply_default_migrations(client[settings.database_name])

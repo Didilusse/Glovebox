@@ -1,8 +1,7 @@
 import hashlib
 import secrets
 import math
-import time
-from threading import Lock
+from datetime import datetime, timezone
 from typing import Tuple
 
 import bcrypt
@@ -11,36 +10,49 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from beanie import PydanticObjectId
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from backend.config import settings
 from backend.models.car_model import CarModel, CarResponse
 from backend.models.car_share import CarAccess, CarShare, SharePermissions
 from backend.models.session import AuthSession
-from backend.models.user import User
+from backend.models.user import LoginRateLimit, User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 password_hasher = PasswordHasher()
 # A valid fixed hash makes unknown-user requests perform the same expensive verification.
 DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQxMjM0NTY3OA$DLKqI7p0+T/XUrXTV/qHEkPxOOgg0goDYVP7YDJJJZ8"
 
-# Process-local fixed-window limiter: workers do not share quotas. At capacity we
-# reject new keys rather than evicting active limits; proxy headers are not trusted.
-login_buckets: dict[str, tuple[float, int]] = {}
-login_buckets_lock = Lock()
+async def throttle_auth(request: Request, account: str) -> None:
+    """Consume fixed-window quotas for both account and direct client IP."""
+    now = datetime.now(timezone.utc)
+    window = settings.login_window_seconds
+    window_number = int(now.timestamp()) // window
+    expires_at = datetime.fromtimestamp((window_number + 1) * window, timezone.utc)
+    retry_after = str(max(1, math.ceil((expires_at - now).total_seconds())))
+    ip = request.client.host if request.client else "unknown"
 
-
-def throttle_login(request: Request) -> None:
-    key = request.client.host if request.client else "unknown"
-    now = time.monotonic()
-    with login_buckets_lock:
-        for expired in [key for key, (until, _) in login_buckets.items() if until <= now]:
-            del login_buckets[expired]
-        until, count = login_buckets.get(key, (now + settings.login_window_seconds, 0))
-        if count >= settings.login_max_attempts or (
-            key not in login_buckets and len(login_buckets) >= settings.login_max_buckets
-        ):
-            raise HTTPException(429, "Too many login attempts", headers={"Retry-After": str(max(1, math.ceil(until - now)))})
-        login_buckets[key] = (until, count + 1)
+    # Consume the IP quota first so rejected rotating usernames cannot create
+    # additional account buckets once a client has exhausted its quota.
+    for dimension, value in (("ip", ip), ("account", account.strip().lower())):
+        digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+        key = f"{dimension}:{window_number}:{digest}"
+        try:
+            bucket = await LoginRateLimit.get_pymongo_collection().find_one_and_update(
+                {"key": key, "attempts": {"$lt": settings.login_max_attempts}},
+                {"$inc": {"attempts": 1}, "$setOnInsert": {"key": key, "expires_at": expires_at}},
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+        except DuplicateKeyError:
+            bucket = None
+        if bucket is None:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many authentication attempts",
+                headers={"Retry-After": retry_after},
+            )
 
 
 def hash_password(password: str) -> str:
@@ -53,7 +65,10 @@ def verify_password(password: str, password_hash: str) -> bool:
             # Persisted bcrypt credentials remain usable, but never accept ambiguous
             # >72-byte input. Those accounts require an administrator password reset.
             encoded = password.encode("utf-8")
-            return len(encoded) <= 72 and bcrypt.checkpw(encoded, password_hash.encode("utf-8"))
+            if len(encoded) > 72:
+                bcrypt.checkpw(encoded[:72], password_hash.encode("utf-8"))
+                return False
+            return bcrypt.checkpw(encoded, password_hash.encode("utf-8"))
         return password_hasher.verify(password_hash, password)
     except (ValueError, InvalidHashError, VerificationError):
         return False

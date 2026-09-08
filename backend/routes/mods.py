@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from beanie import PydanticObjectId
 from typing import List
 from backend.auth import get_mods_car
+from backend.config import settings
 from backend.models.car_model import CarModel
 from backend.models.mod import ModItem, ModItemCreate, ModItemMove, ModItemUpdate, Status
+from backend.services.quotas import QuotaExceeded, claim_quota, release_quota
 
 router = APIRouter(
     prefix="/cars/{car_id}/planned-mods",
@@ -14,14 +16,26 @@ async def get_status_mods(car_id: PydanticObjectId, mod_status: Status) -> List[
     return await ModItem.find(
         ModItem.car_id == car_id,
         ModItem.status == mod_status,
-    ).sort("position", "_id").to_list()
+    ).sort("position", "_id").limit(settings.max_mods_per_car).to_list()
 
 
-async def save_positions(mods: List[ModItem]) -> None:
+async def save_positions(car_id: PydanticObjectId, mods: List[ModItem]) -> None:
+    changes = []
     for position, mod in enumerate(mods):
         if mod.position != position:
             mod.position = position
-            await save_mod(mod)
+            changes.append((mod.id, position))
+    if changes:
+        await ModItem.get_pymongo_collection().update_many(
+            {"_id": {"$in": [mod_id for mod_id, _ in changes]}, "car_id": car_id},
+            [{"$set": {"position": {"$switch": {
+                "branches": [
+                    {"case": {"$eq": ["$_id", mod_id]}, "then": position}
+                    for mod_id, position in changes
+                ],
+                "default": "$position",
+            }}}}],
+        )
 
 
 async def save_mod(mod: ModItem) -> None:
@@ -29,6 +43,7 @@ async def save_mod(mod: ModItem) -> None:
     # Beanie save can upsert after the deletion cascade has already passed.
     if not await CarModel.find_one({"_id": mod.car_id, "is_deleting": {"$ne": True}}):
         await mod.delete()
+        await release_quota("mods", mod.id)
         raise HTTPException(status_code=404, detail="Car not found")
 
 @router.post("/", response_model=ModItem, status_code=status.HTTP_201_CREATED)
@@ -41,11 +56,21 @@ async def create_planned_mod(
     position = column[-1].position + 1 if column else 0
     # Unpack the create schema and inject the car_id from the URL
     new_mod = ModItem(
+        id=PydanticObjectId(),
         car_id=car_id,
         position=position,
         **mod_data.model_dump(mode="json"),
     )
-    await new_mod.insert()
+    try:
+        await claim_quota("mods", car_id, new_mod.id, settings.max_mods_per_car,
+                          ModItem.get_pymongo_collection(), {"car_id": car_id})
+    except QuotaExceeded:
+        raise HTTPException(status_code=409, detail="Planned mod quota reached") from None
+    try:
+        await new_mod.insert()
+    except Exception:
+        await release_quota("mods", new_mod.id)
+        raise
 
     car_still_exists = await CarModel.find_one(
         CarModel.id == car_id,
@@ -53,6 +78,7 @@ async def create_planned_mod(
     )
     if not car_still_exists:
         await new_mod.delete()
+        await release_quota("mods", new_mod.id)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Car not found")
     
     return new_mod
@@ -106,10 +132,10 @@ async def move_planned_mod(
     destination.insert(move.position, mod)
     await save_mod(mod)
     if move.status == source_status:
-        await save_positions(destination)
+        await save_positions(car_id, destination)
     else:
-        await save_positions(source)
-        await save_positions(destination)
+        await save_positions(car_id, source)
+        await save_positions(car_id, destination)
     return mod
 
 
@@ -143,7 +169,7 @@ async def update_planned_mod(
 
     await save_mod(mod)
     if status_changed:
-        await save_positions(source)
+        await save_positions(car_id, source)
     return mod
 
 # DELETE
@@ -161,4 +187,5 @@ async def delete_planned_mod(
         )
     old_status = mod.status
     await mod.delete()
-    await save_positions(await get_status_mods(car_id, old_status))
+    await release_quota("mods", mod.id)
+    await save_positions(car_id, await get_status_mods(car_id, old_status))

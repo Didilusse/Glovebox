@@ -24,7 +24,13 @@ async def lifespan(app: FastAPI):
                 await worker
         await close_db()
 
-app = FastAPI(title="Glovebox API", lifespan=lifespan)
+app = FastAPI(
+    title="Glovebox API",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.api_docs_enabled else None,
+    redoc_url="/redoc" if settings.api_docs_enabled else None,
+    openapi_url="/openapi.json" if settings.api_docs_enabled else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

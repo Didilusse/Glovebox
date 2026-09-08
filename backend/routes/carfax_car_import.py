@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.auth import car_response, ensure_car_owner_active, get_current_user
+from beanie import PydanticObjectId
+
 from backend.models.car_model import CarCreate, CarModel
 from backend.models.user import User
 from backend.routes.maintenance_import import (
@@ -14,6 +16,8 @@ from backend.routes.maintenance_import import (
 )
 from backend.services.carfax_importer import make_source_record_key
 from backend.services.maintenance import create_imported_logs
+from backend.config import settings
+from backend.services.quotas import QuotaExceeded, claim_quota, release_quota
 
 
 router = APIRouter(prefix="/cars/import/carfax", tags=["Car Import"])
@@ -75,13 +79,19 @@ async def confirm_carfax_car(payload: CarfaxCarConfirmRequest, user: User = Depe
     car_data["vin"] = report_vin
     if car_data["initial_mileage"] is None and car_data["mileage"] is not None:
         car_data["initial_mileage"] = car_data["mileage"]
-    car = CarModel(owner_id=user.id, **car_data)
-    await car.insert()
-    await ensure_car_owner_active(car)
+    car = CarModel(id=PydanticObjectId(), owner_id=user.id, **car_data)
     try:
+        await claim_quota("cars", user.id, car.id, settings.max_cars_per_user,
+                          CarModel.get_pymongo_collection(), {"owner_id": user.id})
+    except QuotaExceeded:
+        raise HTTPException(409, "Vehicle quota reached") from None
+    try:
+        await car.insert()
+        await ensure_car_owner_active(car)
         created, skipped = await create_imported_logs(car.id, records)
     except Exception:
         await car.delete()
+        await release_quota("cars", car.id)
         raise
 
     saved_car = await CarModel.get(car.id)

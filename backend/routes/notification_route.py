@@ -57,7 +57,10 @@ async def due_reminders(user: User = Depends(get_current_user)):
 @router.get("/notifications/", response_model=list[NotificationResponse])
 async def notifications(user: User = Depends(get_current_user), limit: int = Query(100, ge=1, le=100)):
     result = []
-    async for notification in Notification.find(Notification.user_id == user.id).sort(-Notification.created_at):
+    query = Notification.find(Notification.user_id == user.id).sort(
+        -Notification.created_at
+    ).limit(settings.max_notifications_per_user)
+    async for notification in query:
         if await current_notification(notification):
             result.append(notification)
         if len(result) >= limit:

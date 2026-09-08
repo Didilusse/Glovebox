@@ -10,6 +10,8 @@ from backend.models.maintenance_log import MaintenanceLog
 from backend.models.notification import Notification
 from backend.models.mod import ModItem
 from backend.models.user import User
+from backend.config import settings
+from backend.services.quotas import QuotaExceeded, claim_quota, release_car_quotas, release_quota
 
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
@@ -19,9 +21,18 @@ async def add_car(car_data: CarCreate, user: User = Depends(get_current_user)):
       data = car_data.model_dump()
       if data["initial_mileage"] is None and data["mileage"] is not None:
             data["initial_mileage"] = data["mileage"]
-      car = CarModel(owner_id=user.id, **data)
-      await car.insert()
-      await ensure_car_owner_active(car)
+      car = CarModel(id=PydanticObjectId(), owner_id=user.id, **data)
+      try:
+            await claim_quota("cars", user.id, car.id, settings.max_cars_per_user,
+                              CarModel.get_pymongo_collection(), {"owner_id": user.id})
+      except QuotaExceeded:
+            raise HTTPException(409, "Vehicle quota reached") from None
+      try:
+            await car.insert()
+            await ensure_car_owner_active(car)
+      except Exception:
+            await release_quota("cars", car.id)
+            raise
       return await car_response(car, user)
 
 @router.get("/", response_model=List[CarResponse])
@@ -59,6 +70,8 @@ async def delete_car(
       await ModItem.find(ModItem.car_id == car.id).delete()
       await CarShare.find(CarShare.car_id == car.id).delete()
       await car.delete()
+      await release_car_quotas(car.id)
+      await release_quota("cars", car.id)
 
       return None
 

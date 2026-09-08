@@ -5,6 +5,7 @@ import secrets
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 
+from beanie import PydanticObjectId
 from pymongo.errors import DuplicateKeyError
 
 from backend.config import settings
@@ -13,6 +14,7 @@ from backend.models.notification import Notification, UserPreferences
 from backend.models.user import User
 from backend.services.notification_delivery import deliver
 from backend.services.reminders import car_reminders
+from backend.services.quotas import QuotaExceeded, claim_quota, release_quota
 
 logger = logging.getLogger(__name__)
 CHANNEL_FIELDS = {"webhook": "webhook_url", "discord": "discord_webhook_url", "email": "email"}
@@ -53,7 +55,8 @@ async def check_due_reminders():
                 for channel in CHANNEL_FIELDS:
                     prefix = f"deliveries.{channel}"
                     await Notification.get_pymongo_collection().update_one(
-                        {"_id": existing.id, f"{prefix}.status": "waiting"},
+                        {"_id": existing.id, f"{prefix}.status": "waiting",
+                         f"{prefix}.attempts": {"$lt": settings.notification_max_delivery_attempts}},
                         {"$set": {f"{prefix}.status": "pending", f"{prefix}.next_at": datetime.now(timezone.utc)}},
                     )
                 continue
@@ -64,6 +67,7 @@ async def check_due_reminders():
             if reminder.reminder_mileage is not None:
                 deadlines.append(f"odometer {reminder.reminder_mileage:,} miles")
             notification = Notification(
+                id=PydanticObjectId(),
                 user_id=user.id, car_id=car.id, log_id=reminder.log_id, event_key=key,
                 title=f"Maintenance due: {reminder.work_done}",
                 message=f"{reminder.car_name}: {reminder.work_done} is due. Scheduled for {' or '.join(deadlines)}.",
@@ -72,11 +76,23 @@ async def check_due_reminders():
                             if preferences and getattr(preferences, field)},
             )
             try:
+                await claim_quota(
+                    "notifications", user.id, notification.id, settings.max_notifications_per_user,
+                    Notification.get_pymongo_collection(), {"user_id": user.id}, car_id=str(car.id),
+                )
+            except QuotaExceeded:
+                continue
+            try:
                 await notification.insert()
             except DuplicateKeyError:
+                await release_quota("notifications", notification.id)
                 continue
+            except Exception:
+                await release_quota("notifications", notification.id)
+                raise
             if not await current_notification(notification):
                 await notification.delete()
+                await release_quota("notifications", notification.id)
 
 
 async def dispatch_notifications():
@@ -85,12 +101,13 @@ async def dispatch_notifications():
     # from monopolizing the worker. Claims expire after interrupted deliveries.
     for channel, field in CHANNEL_FIELDS.items():
         prefix = f"deliveries.{channel}"
-        for _ in range(25):
+        for _ in range(settings.notification_dispatch_batch):
             now = datetime.now(timezone.utc)
             claim = secrets.token_hex(16)
             document = await collection.find_one_and_update(
                 {f"{prefix}.status": {"$in": ["pending", "sending"]},
-                 f"{prefix}.next_at": {"$lte": now}},
+                 f"{prefix}.next_at": {"$lte": now},
+                 f"{prefix}.attempts": {"$lt": settings.notification_max_delivery_attempts}},
                 {"$set": {f"{prefix}.status": "sending", f"{prefix}.claim": claim,
                           f"{prefix}.next_at": now + timedelta(minutes=2)},
                  "$inc": {f"{prefix}.attempts": 1}},
@@ -112,7 +129,8 @@ async def dispatch_notifications():
                     await deliver(channel, destination, notification.title, notification.message)
                     status = "sent"
                 except Exception:
-                    status = "failed" if attempts >= 5 else "pending"
+                    status = ("failed" if attempts >= settings.notification_max_delivery_attempts
+                              else "pending")
                     logger.warning("Reminder delivery unsuccessful: channel=%s attempt=%s", channel, attempts)
                 finally:
                     lease.cancel()

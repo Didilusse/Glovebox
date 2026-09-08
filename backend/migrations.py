@@ -43,18 +43,22 @@ async def apply_default_migrations(database) -> None:
     signature = _defaults_signature(defaults_by_collection)
     migrations = database.schema_migrations
     applied = await migrations.find_one({"_id": DEFAULT_MIGRATION_ID})
-    if applied and applied.get("signature") == signature:
-        return
+    if not applied or applied.get("signature") != signature:
+        for collection, defaults in defaults_by_collection.items():
+            for field, default in defaults.items():
+                await database[collection].update_many(
+                    {field: {"$exists": False}},
+                    {"$set": {field: default}},
+                )
 
-    for collection, defaults in defaults_by_collection.items():
-        for field, default in defaults.items():
-            await database[collection].update_many(
-                {field: {"$exists": False}},
-                {"$set": {field: default}},
-            )
+        await migrations.update_one(
+            {"_id": DEFAULT_MIGRATION_ID},
+            {"$set": {"signature": signature, "applied_at": datetime.now(timezone.utc)}},
+            upsert=True,
+        )
 
-    await migrations.update_one(
-        {"_id": DEFAULT_MIGRATION_ID},
-        {"$set": {"signature": signature, "applied_at": datetime.now(timezone.utc)}},
-        upsert=True,
+    await database.quota_slots.create_index(
+        [("kind", 1), ("scope", 1), ("resource_id", 1)],
+        unique=True,
+        name="quota_resource",
     )

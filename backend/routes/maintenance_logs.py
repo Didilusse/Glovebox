@@ -13,6 +13,7 @@ from typing import List
 
 from backend.services.maintenance import create_log
 from backend.services.reminders import calculate_next_reminder, is_oil_change
+from backend.services.quotas import release_quota
 
 router = APIRouter(prefix="/cars/{car_id}/logs", tags=["Maintenance Logs"])
 
@@ -151,3 +152,4 @@ async def delete_maintenance_log(
         raise HTTPException(status_code=404, detail="Maintenance log not found for this car")
 
     await maintenance_log.delete()
+    await release_quota("maintenance_logs", maintenance_log.id)

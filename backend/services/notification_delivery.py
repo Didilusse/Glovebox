@@ -12,13 +12,19 @@ import smtplib
 import socket
 import ssl
 import threading
+import time
 from urllib.parse import urlsplit
+
+import dns.exception
+import dns.resolver
 
 from backend.config import settings
 
 
 _TIMEOUT = 10
 _MAX_PAYLOAD = 64 * 1024
+_DNS_TIMEOUT = 3
+_MAX_DNS_ADDRESSES = 16
 _WORKERS = ThreadPoolExecutor(max_workers=4, thread_name_prefix="notification")
 _SLOTS = threading.BoundedSemaphore(4)
 _FAILURE = "Notification delivery failed"
@@ -99,15 +105,42 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
             raise
 
 
+def _resolve_addresses(host: str) -> list[tuple[int, tuple]]:
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = min(1.0, _DNS_TIMEOUT)
+        deadline = time.monotonic() + _DNS_TIMEOUT
+        values = []
+        for record_type, family in (("A", socket.AF_INET), ("AAAA", socket.AF_INET6)):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise dns.exception.Timeout
+            try:
+                answers = resolver.resolve(host, record_type, lifetime=remaining, search=False)
+            except dns.resolver.NoAnswer:
+                continue
+            except dns.resolver.NXDOMAIN:
+                break
+            for answer in answers:
+                values.append((family, str(answer)))
+                if len(values) > _MAX_DNS_ADDRESSES:
+                    raise ValueError("Too many endpoint addresses")
+    else:
+        values = [(socket.AF_INET6 if address.version == 6 else socket.AF_INET, str(address))]
+
+    if not values or any(not _public_ip(value) for _, value in values):
+        raise ValueError("Unsafe endpoint")
+    return [
+        (family, (value, 443, 0, 0) if family == socket.AF_INET6 else (value, 443))
+        for family, value in values
+    ]
+
+
 def _webhook(destination: str, title: str, message: str, discord: bool):
     parsed = urlsplit(validate_destination(destination, discord=discord))
-    records = socket.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM,
-                                 proto=socket.IPPROTO_TCP)
-    if not records or any(family not in (socket.AF_INET, socket.AF_INET6)
-                          or not _public_ip(address[0])
-                          for family, _, _, _, address in records):
-        raise ValueError("Unsafe endpoint")
-    family, _, _, _, address = records[0]
+    family, address = _resolve_addresses(parsed.hostname)[0]
     payload = ({"content": title + "\n" + message, "allowed_mentions": {"parse": []}}
                if discord else {"title": title, "message": message})
     body = json.dumps(payload).encode("utf-8")
@@ -177,7 +210,7 @@ async def deliver(channel: str, destination: str, title: str, message: str) -> N
     """Deliver once, or raise DeliveryError; no redirects, retries, or secret logging.
 
     At most four jobs can run, with no unbounded queue. Socket operations have
-    a 10-second timeout, but there is no total deadline and DNS may stall.
+    a 10-second socket timeout and DNS has a separate three-second deadline.
     Cancellation propagates without releasing a running worker's capacity until
     it actually finishes; otherwise await its result to avoid premature retries.
     """

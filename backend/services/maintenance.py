@@ -7,6 +7,8 @@ from pymongo.errors import DuplicateKeyError
 from backend.models.car_model import CarModel
 from backend.models.maintenance_log import MaintenanceLog, MaintenanceLogCreate
 from backend.services.reminders import calculate_next_reminder
+from backend.config import settings
+from backend.services.quotas import QuotaExceeded, claim_quota, release_quota
 
 
 async def create_log(car_id: PydanticObjectId, log_data: MaintenanceLogCreate) -> MaintenanceLog:
@@ -21,12 +23,22 @@ async def create_log(car_id: PydanticObjectId, log_data: MaintenanceLogCreate) -
         interval_miles=log_data.interval_miles,
     )
     log = MaintenanceLog(
+        id=PydanticObjectId(),
         car_id=car_id,
         reminder_date=reminder_date,
         reminder_mileage=reminder_mileage,
         **log_data.model_dump(),
     )
-    await log.insert()
+    try:
+        await claim_quota("maintenance_logs", car_id, log.id, settings.max_maintenance_logs_per_car,
+                          MaintenanceLog.get_pymongo_collection(), {"car_id": car_id})
+    except QuotaExceeded:
+        raise HTTPException(status_code=409, detail="Maintenance log quota reached") from None
+    try:
+        await log.insert()
+    except Exception:
+        await release_quota("maintenance_logs", log.id)
+        raise
 
     try:
         result = await CarModel.get_pymongo_collection().update_one(
@@ -35,9 +47,11 @@ async def create_log(car_id: PydanticObjectId, log_data: MaintenanceLogCreate) -
         )
     except Exception:
         await log.delete()
+        await release_quota("maintenance_logs", log.id)
         raise
     if result.matched_count == 0:
         await log.delete()
+        await release_quota("maintenance_logs", log.id)
         raise HTTPException(status_code=404, detail="Car not found")
     return log
 
@@ -54,12 +68,29 @@ async def create_imported_logs(
     skipped = 0
     try:
         for record in records:
-            log = MaintenanceLog(car_id=car_id, source="carfax", **record)
+            existing = await MaintenanceLog.find_one({
+                "car_id": car_id,
+                "source": "carfax",
+                "source_record_key": record["source_record_key"],
+            })
+            if existing:
+                skipped += 1
+                continue
+            log = MaintenanceLog(id=PydanticObjectId(), car_id=car_id, source="carfax", **record)
+            try:
+                await claim_quota("maintenance_logs", car_id, log.id, settings.max_maintenance_logs_per_car,
+                                  MaintenanceLog.get_pymongo_collection(), {"car_id": car_id})
+            except QuotaExceeded:
+                raise HTTPException(status_code=409, detail="Maintenance log quota reached") from None
             try:
                 await log.insert()
             except DuplicateKeyError:
+                await release_quota("maintenance_logs", log.id)
                 skipped += 1
                 continue
+            except Exception:
+                await release_quota("maintenance_logs", log.id)
+                raise
             created.append(log)
 
         known_mileages = [log.mileage for log in created if log.mileage is not None]
@@ -77,6 +108,7 @@ async def create_imported_logs(
     except Exception:
         for log in created:
             await log.delete()
+            await release_quota("maintenance_logs", log.id)
         raise
 
     return created, skipped

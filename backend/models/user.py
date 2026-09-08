@@ -35,6 +35,19 @@ class User(Document):
         return normalized
 
 
+class LoginRateLimit(Document):
+    key: str
+    attempts: int = 0
+    expires_at: datetime
+
+    class Settings:
+        name = "auth_rate_limits"
+        indexes = [
+            IndexModel([("key", ASCENDING)], name="unique_rate_limit_key", unique=True),
+            IndexModel([("expires_at", ASCENDING)], name="rate_limit_expiry", expireAfterSeconds=0),
+        ]
+
+
 class UserResponse(BaseModel):
     id: PydanticObjectId = Field(serialization_alias="_id")
     username: str
@@ -46,7 +59,7 @@ class UserResponse(BaseModel):
 
 class UserCreate(BaseModel):
     username: str
-    password: str = Field(min_length=4, max_length=128)
+    password: str = Field(min_length=12, max_length=128)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -62,14 +75,14 @@ class UserCreate(BaseModel):
 
 
 class PasswordReset(BaseModel):
-    new_password: str = Field(min_length=4, max_length=128)
+    new_password: str = Field(min_length=12, max_length=128)
 
     model_config = ConfigDict(extra="forbid")
 
 
 class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
-    new_password: str = Field(min_length=4, max_length=128)
+    new_password: str = Field(min_length=12, max_length=128)
 
     model_config = ConfigDict(extra="forbid")
 

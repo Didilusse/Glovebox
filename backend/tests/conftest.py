@@ -1,5 +1,7 @@
 import os
 
+os.environ["SETUP_TOKEN_REQUIRED"] = "false"
+
 import pytest
 from fastapi.testclient import TestClient
 from mongomock_motor import AsyncMongoMockClient
@@ -14,16 +16,9 @@ ADMIN_PASSWORD = "correct-horse-battery"
 
 
 @pytest.fixture(autouse=True)
-def clear_login_limits():
-    from backend.auth import login_buckets
-    login_buckets.clear()
-    yield
-    login_buckets.clear()
-
-
-@pytest.fixture(autouse=True)
 def isolate_setup_token(monkeypatch):
     monkeypatch.setattr(settings, "setup_token", None)
+    monkeypatch.setattr(settings, "setup_token_required", False)
     monkeypatch.setattr(settings, "reminder_worker_enabled", False)
 
 
@@ -56,8 +51,12 @@ def setup_admin(client):
     return payload
 
 
+def effective_test_password(password):
+    return "password1234" if password == "password123" else password
+
+
 def create_user(client, username, password="password123"):
-    response = client.post("/users/", json={"username": username, "password": password})
+    response = client.post("/users/", json={"username": username, "password": effective_test_password(password)})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -66,7 +65,7 @@ def auth_headers_for(client, username, password):
     """Log in as an existing user and return headers for acting as that user."""
     response = client.post(
         "/auth/login",
-        json={"username": username, "password": password},
+        json={"username": username, "password": effective_test_password(password)},
         headers={},
     )
     assert response.status_code == 200, response.text
@@ -83,6 +82,8 @@ def _wipe(database):
     database.schema_migrations.delete_many({})
     database.user_preferences.delete_many({})
     database.notifications.delete_many({})
+    database.quota_slots.delete_many({})
+    database.auth_rate_limits.delete_many({})
 
 
 @pytest.fixture()

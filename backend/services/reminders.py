@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import re
 
 from dateutil.relativedelta import relativedelta
+from backend.config import settings
 
 
 def is_oil_change(work_done: str) -> bool:
@@ -14,7 +15,7 @@ async def car_reminders(car, today: date | None = None):
     today = today or date.today()
     logs = await MaintenanceLog.find(MaintenanceLog.car_id == car.id).sort(
         -MaintenanceLog.date_of_service, -MaintenanceLog.id
-    ).to_list()
+    ).limit(settings.max_maintenance_logs_per_car).to_list()
     current_mileage = car.mileage if car.mileage is not None else car.initial_mileage
     reminders = []
     seen_oil_change = False
