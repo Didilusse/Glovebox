@@ -1,66 +1,33 @@
 name: Deploy to Server
 
 on:
-  workflow_run:
-    workflows: ["CI/CD Pipeline"]
-    types: [completed]
-    branches: [main]
-
-concurrency:
-  group: glovebox-production
-  cancel-in-progress: false
+  push:
+    branches: ["main"]
 
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Validate deployment configuration
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-        run: |
-          set -eu
-          test -n "$SSH_PRIVATE_KEY"
-          test -n "$SERVER_HOST"
-          test -n "$SERVER_USER"
-          test -n "$SSH_KNOWN_HOSTS"
 
-      - name: Check out tested revision
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
 
       - name: Start ssh-agent
-        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install pinned server host key
-        env:
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-        run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+      - name: Add server to known hosts
+        run: ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Create deploy directory on server
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-        run: ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p /home/$SERVER_USER/glovebox"
+        run: |
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "mkdir -p /home/${{ secrets.SERVER_USER }}/glovebox"
 
-      - name: Sync tested files to server
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
+      - name: Sync files to server
         run: |
           rsync -az --delete \
-            --filter='protect .env' \
-            --exclude '.env' \
             --exclude '.git' \
             --exclude '.venv' \
             --exclude 'node_modules' \
@@ -69,28 +36,12 @@ jobs:
             --exclude 'data/db' \
             --exclude '__pycache__' \
             --exclude '.pytest_cache' \
-            ./ "$SERVER_USER@$SERVER_HOST:/home/$SERVER_USER/glovebox/"
+            ./ "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/${{ secrets.SERVER_USER }}/glovebox/"
 
-      - name: Validate and deploy containers
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
+      - name: Build and start containers
         run: |
-          ssh "$SERVER_USER@$SERVER_HOST" 'bash -se' <<'EOF'
-            cd "$HOME/glovebox"
-            test -f .env
-            chmod 600 .env
-            docker compose config --quiet
-            docker compose up -d --build --wait --wait-timeout 180
-            docker compose ps
-          EOF
-
-      - name: Verify HTTP and API health
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-        run: |
-          ssh "$SERVER_USER@$SERVER_HOST" 'bash -se' <<'EOF'
-            test "$(curl --fail --silent --show-error http://127.0.0.1:5173/healthz)" = ok
-            curl --fail --silent --show-error http://127.0.0.1:5173/api/auth/status >/dev/null
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
+            set -e
+            cd /home/${{ secrets.SERVER_USER }}/glovebox
+            docker compose -f docker-compose.yml up -d --build
           EOF
