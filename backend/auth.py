@@ -125,7 +125,7 @@ async def get_owned_car(
     return car
 
 
-async def get_accessible_car(car_id: PydanticObjectId, user: User = Depends(get_current_user)) -> CarModel:
+async def get_accessible_car(car_id: PydanticObjectId, user: User) -> CarModel:
     car = await CarModel.get(car_id)
     if not car or car.is_deleting:
         raise HTTPException(404, "Car not found")
@@ -138,7 +138,12 @@ async def get_accessible_car(car_id: PydanticObjectId, user: User = Depends(get_
 
 
 def require_car_section(section: str):
-    async def dependency(request: Request, car: CarModel = Depends(get_accessible_car), user: User = Depends(get_current_user)) -> CarModel:
+    async def dependency(
+        request: Request,
+        car_id: PydanticObjectId,
+        user: User = Depends(get_current_user),
+    ) -> CarModel:
+        car = await get_accessible_car(car_id, user)
         if car.owner_id != user.id:
             grant = await CarShare.find_one({"car_id": car.id, "user_id": user.id})
             if not grant:
@@ -147,6 +152,7 @@ def require_car_section(section: str):
             if permission == "none" or (request.method not in ("GET", "HEAD") and permission != "edit"):
                 raise HTTPException(403, f"{section.capitalize()} permission required")
         return car
+
     return dependency
 
 
