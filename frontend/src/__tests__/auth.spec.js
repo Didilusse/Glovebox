@@ -106,6 +106,8 @@ describe('authenticated client', () => {
   })
   it.each(['success', 'unauthorized', 'offline', 'timeout'])('preserves a login during logout after %s', async outcome => {
     vi.useFakeTimers()
+    // Other mounted UI tests may have polling timers; only assert logout cleanup here.
+    vi.clearAllTimers()
     setSession('old-token', user)
     let resolve, reject
     fetch.mockReturnValueOnce(new Promise((done, fail) => { resolve = done; reject = fail }))
