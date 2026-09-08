@@ -28,6 +28,8 @@ jobs:
       - name: Sync files to server
         run: |
           rsync -az --delete \
+            --filter='protect .env' \
+            --exclude '.env' \
             --exclude '.git' \
             --exclude '.venv' \
             --exclude 'node_modules' \
@@ -43,5 +45,8 @@ jobs:
           ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
             set -e
             cd /home/${{ secrets.SERVER_USER }}/glovebox
+            test -f .env
+            chmod 600 .env
+            docker compose config --quiet
             docker compose -f docker-compose.yml up -d --build
           EOF
