@@ -8,10 +8,12 @@
           <span>Glovebox</span>
         </a>
 
-        <button type="button" class="header-add-button" @click="handleShowCarForm">
-          Add car
-        </button>
-        <AccountControls />
+        <div class="header-actions">
+          <button type="button" class="header-add-button" @click="handleShowCarForm">
+            Add car
+          </button>
+          <AccountControls />
+        </div>
       </div>
     </header>
 
@@ -27,7 +29,7 @@
         :inventory="cars"
         class="car-list-section"
         @add="handleShowCarForm"
-        @delete="handleDeleteCar"
+        @delete="requestDeleteCar"
         @view="handleViewCar"
       />
 
@@ -44,6 +46,19 @@
           />
         </div>
       </transition>
+
+      <VehicleDialog v-if="carPendingDelete" title="Delete vehicle" @close="cancelDeleteCar">
+        <div class="delete-confirmation">
+          <p>Delete <strong>{{ carPendingDelete.year }} {{ carPendingDelete.make }} {{ carPendingDelete.model }}</strong>?</p>
+          <p>This permanently removes the vehicle, its maintenance history, reminders, and planned modifications. This cannot be undone.</p>
+          <div class="dialog-actions">
+            <button type="button" :disabled="isDeletingCar" @click="cancelDeleteCar">Cancel</button>
+            <button type="button" class="confirm-delete" :disabled="isDeletingCar" @click="confirmDeleteCar">
+              {{ isDeletingCar ? 'Deleting...' : 'Delete vehicle' }}
+            </button>
+          </div>
+        </div>
+      </VehicleDialog>
     </main>
   </div>
 </template>
@@ -56,12 +71,15 @@ import CarList from '../components/CarList.vue'
 import { showToast } from '../components/Toast.vue'
 import AccountControls from '../components/AccountControls.vue'
 import DueAlerts from '../components/DueAlerts.vue'
+import VehicleDialog from '../components/VehicleDialog.vue'
 import { API_BASE, useApiClient } from '../utils/auth'
 
 const fetch = useApiClient()
 const router = useRouter()
 const cars = ref([])
 const isCarFormVisible = ref(false)
+const carPendingDelete = ref(null)
+const isDeletingCar = ref(false)
 
 onMounted(handleFetchCars)
 
@@ -105,8 +123,19 @@ function handleCarCreated(car) {
   handleCloseCarForm()
 }
 
-async function handleDeleteCar(carId) {
-  if (!cars.value.find(car => car._id === carId)?.access?.is_owner) return
+function requestDeleteCar(carId) {
+  const car = cars.value.find(existingCar => existingCar._id === carId)
+  if (car?.access?.is_owner) carPendingDelete.value = car
+}
+
+function cancelDeleteCar() {
+  if (!isDeletingCar.value) carPendingDelete.value = null
+}
+
+async function confirmDeleteCar() {
+  if (!carPendingDelete.value || isDeletingCar.value) return
+  const carId = carPendingDelete.value._id
+  isDeletingCar.value = true
   try {
     const response = await fetch(`${API_BASE}/cars/${carId}`, {
       method: 'DELETE'
@@ -117,9 +146,12 @@ async function handleDeleteCar(carId) {
     }
 
     cars.value = cars.value.filter(existingCar => existingCar._id !== carId)
+    carPendingDelete.value = null
     showToast('Car deleted successfully', 'success')
   } catch (error) {
     if (error.name !== 'AbortError') showToast('Failed to delete car', 'error')
+  } finally {
+    isDeletingCar.value = false
   }
 }
 </script>
@@ -130,6 +162,37 @@ async function handleDeleteCar(carId) {
   width: 100%;
   color: #c1c3c9;
   background: #161a20;
+}
+
+.delete-confirmation {
+  display: grid;
+  gap: 12px;
+}
+
+.delete-confirmation p {
+  margin: 0;
+  color: var(--gb-text-muted);
+  line-height: 1.6;
+}
+
+.delete-confirmation strong {
+  color: var(--gb-heading);
+}
+
+.delete-confirmation .dialog-actions {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.delete-confirmation .confirm-delete {
+  border-color: rgba(239, 139, 128, 0.45);
+  background: rgba(239, 139, 128, 0.12);
+  color: #ef8b80;
+}
+
+.delete-confirmation .confirm-delete:hover:not(:disabled) {
+  border-color: #ef8b80;
+  background: rgba(239, 139, 128, 0.2);
 }
 
 .site-header {
@@ -167,7 +230,6 @@ async function handleDeleteCar(carId) {
 }
 
 .header-add-button {
-  margin-left: auto;
   padding: 10px 18px;
   border: 0;
   border-radius: 999px;
@@ -176,6 +238,13 @@ async function handleDeleteCar(carId) {
   font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .header-add-button:hover {
@@ -255,7 +324,12 @@ async function handleDeleteCar(carId) {
     padding: 12px 0;
   }
 
-  .header-inner :deep(.account-controls) {
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .header-actions :deep(.account-controls) {
     flex-basis: 100%;
   }
 
