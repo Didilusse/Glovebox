@@ -36,6 +36,19 @@ def test_nhtsa_returns_combined_payload(api_client, monkeypatch):
     assert payload["recalls"][0]["recall_number"] == "22V164000"
 
 
+def test_vin_decode_endpoint_returns_decoded_vehicle(api_client, monkeypatch):
+    async def fake_decode_vin(vin):
+        assert vin == "1HGCM82633A004352"
+        return {"make": "HONDA", "model": "Accord", "year": "2003"}
+
+    monkeypatch.setattr("backend.routes.nhtsa.decode_vin", fake_decode_vin)
+
+    response = api_client.get("/nhtsa/decode/1HGCM82633A004352")
+
+    assert response.status_code == 200
+    assert response.json()["model"] == "Accord"
+
+
 def test_nhtsa_not_found(api_client):
     response = api_client.get("/cars/64b000000000000000000000/nhtsa/")
     assert response.status_code == 404

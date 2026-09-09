@@ -64,7 +64,7 @@ def test_preview_and_idempotent_confirm(api_client, monkeypatch):
 
 
 def test_preview_rejects_vin_mismatch_and_invalid_files(api_client, monkeypatch):
-    car = create_car(api_client, vin="2HGCP3F89BA028384")
+    car = create_car(api_client, vin="JHGCP3F89BA028384")
     response = _preview(api_client, car["_id"], monkeypatch)
     assert response.status_code == 409
 

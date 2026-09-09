@@ -118,6 +118,26 @@ describe('vehicle sharing', () => {
 })
 
 describe('vehicle editing', () => {
+  it('shows purchase prices with two decimal places', async () => {
+    wrapper = mount(VehicleEdit, { props: { car: { ...car, purchased_price: 2000.1 } } })
+    const priceInput = wrapper.get('input[data-currency]')
+
+    expect(priceInput.element.value).toBe('2000.10')
+    await priceInput.setValue('1500.5')
+    await priceInput.trigger('blur')
+    expect(priceInput.element.value).toBe('1500.50')
+  })
+
+  it('preserves negative currency formatting and filters mileage while typing', async () => {
+    wrapper = mount(VehicleEdit, { props: { car: { ...car, purchased_price: -100.1 } } })
+    const priceInput = wrapper.get('input[data-currency]')
+    const mileageInput = wrapper.get('#edit-mileage')
+
+    expect(priceInput.element.value).toBe('-100.10')
+    await mileageInput.setValue('50k.25')
+    expect(mileageInput.element.value).toBe('5025')
+  })
+
   it('allows vehicle editors to save schema fields without sending access metadata', async () => {
     const editable = { ...car, access: { is_owner: false, permissions: { ...permissions, vehicle: 'edit' } } }
     wrapper = mount(VehicleEdit, { props: { car: editable } })
@@ -130,7 +150,7 @@ describe('vehicle editing', () => {
     expect(wrapper.emitted('updated')[0][0].make).toBe('Honda')
   })
 
-  it.each([['year', '1800'], ['mileage', '-1'], ['mileage', '1.5'], ['purchased_price', '-5'], ['purchased_date', '2999-01-01']])('rejects invalid %s %s', async (field, value) => {
+  it.each([['year', '1800'], ['mileage', '-1'], ['mileage', '1.5'], ['purchased_price', 'invalid'], ['purchased_date', '2999-01-01']])('rejects invalid %s %s', async (field, value) => {
     wrapper = mount(VehicleEdit, { props: { car: { ...car, [field]: value } } })
     await wrapper.find('form').trigger('submit')
     expect(fetch).not.toHaveBeenCalled()

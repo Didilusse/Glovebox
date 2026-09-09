@@ -2,12 +2,37 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from typing import Optional
 from datetime import date
 from enum import Enum
+import re
 from beanie import Document, PydanticObjectId
 from pymongo import ASCENDING, IndexModel
 from backend.models.car_share import CarAccess
 
 
 MAX_VEHICLE_YEAR = date.today().year + 1
+VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+VIN_LETTER_VALUES = {
+    **dict(zip("ABCDEFGH", range(1, 9))),
+    **dict(zip("JKLMN", range(1, 6))),
+    "P": 7, "R": 9,
+    **dict(zip("STUVWXYZ", range(2, 10))),
+}
+VIN_WEIGHTS = (8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2)
+
+
+def validate_vin(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.upper()
+    if not VIN_PATTERN.fullmatch(value):
+        raise ValueError("VIN must contain exactly 17 letters and numbers, excluding I, O, and Q")
+    total = sum(
+        (int(character) if character.isdigit() else VIN_LETTER_VALUES[character]) * weight
+        for character, weight in zip(value, VIN_WEIGHTS)
+    )
+    check_digit = "X" if total % 11 == 10 else str(total % 11)
+    if value[8] != check_digit:
+        raise ValueError("VIN check digit does not match")
+    return value
 
 
 class FuelType(str, Enum):
@@ -20,13 +45,13 @@ class CarFields(BaseModel):
     make: str = Field(min_length=1, max_length=100, description="The company that made the car")
     model: str = Field(min_length=1, max_length=100, description="The model name")
     year: int = Field(ge=1886, le=MAX_VEHICLE_YEAR, description="What year the car was made")
-    mileage: Optional[int] = Field(None, ge=0, description="Current mileage of the vehicle")
-    initial_mileage: Optional[int] = Field(None, ge=0, description="Odometer reading when the car was added")
+    mileage: Optional[int] = Field(None, ge=0, strict=True, description="Current mileage of the vehicle")
+    initial_mileage: Optional[int] = Field(None, ge=0, strict=True, description="Odometer reading when the car was added")
     vin: Optional[str] = Field(None, min_length=1, max_length=17, description="Vehicle Identification Number")
     license_plate: Optional[str] = Field(None, min_length=1, max_length=20, description="License plate number")
     fuel_type: Optional[FuelType] = Field(None, description="Fuel type: gas, diesel, or electric")
     purchased_date: Optional[date] = Field(None, description="Date the vehicle was purchased")
-    purchased_price: Optional[float] = Field(None, ge=0, allow_inf_nan=False, description="Price paid for the vehicle")
+    purchased_price: Optional[float] = Field(None, allow_inf_nan=False, description="Price paid for the vehicle")
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -39,22 +64,24 @@ class CarFields(BaseModel):
 
 
 class CarCreate(CarFields):
-    pass
+    _validate_vin = field_validator("vin")(validate_vin)
 
 
 class CarUpdate(BaseModel):
     make: Optional[str] = Field(None, min_length=1, max_length=100)
     model: Optional[str] = Field(None, min_length=1, max_length=100)
     year: Optional[int] = Field(None, ge=1886, le=MAX_VEHICLE_YEAR)
-    mileage: Optional[int] = Field(None, ge=0)
-    initial_mileage: Optional[int] = Field(None, ge=0)
+    mileage: Optional[int] = Field(None, ge=0, strict=True)
+    initial_mileage: Optional[int] = Field(None, ge=0, strict=True)
     vin: Optional[str] = Field(None, min_length=1, max_length=17)
     license_plate: Optional[str] = Field(None, min_length=1, max_length=20)
     fuel_type: Optional[FuelType] = None
     purchased_date: Optional[date] = None
-    purchased_price: Optional[float] = Field(None, ge=0, allow_inf_nan=False)
+    purchased_price: Optional[float] = Field(None, allow_inf_nan=False)
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    _validate_vin = field_validator("vin")(validate_vin)
 
     @model_validator(mode="after")
     def reject_null_values(self):

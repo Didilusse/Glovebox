@@ -60,6 +60,22 @@ def test_car_crud_contract_and_pagination(api_client):
     assert api_client.get("/cars/not-an-object-id").status_code == 422
 
 
+def test_car_create_and_update_reject_invalid_vins(api_client):
+    invalid_vin = "1HGCM82643A004352"
+    response = api_client.post("/cars/", json={"make": "Honda", "model": "Accord", "year": 2003, "vin": invalid_vin})
+    assert response.status_code == 422
+    assert "check digit" in response.text
+
+    car = create_car(api_client)
+    response = api_client.patch(f"/cars/{car['_id']}", json={"vin": invalid_vin})
+    assert response.status_code == 422
+    assert "check digit" in response.text
+
+    response = api_client.patch(f"/cars/{car['_id']}", json={"vin": "1hgcm82633a004352"})
+    assert response.status_code == 200
+    assert response.json()["vin"] == "1HGCM82633A004352"
+
+
 def test_maintenance_updates_mileage_and_rejects_invalid_updates(api_client):
     car = create_car(api_client)
     log = create_log(api_client, car["_id"], mileage=52_000)
