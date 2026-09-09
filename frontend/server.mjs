@@ -94,7 +94,7 @@ function safePath(urlPath) {
     return null
   }
   const candidate = path.resolve(root, `.${decoded}`)
-  return candidate.startsWith(`${root}${path.sep}`) ? candidate : null
+  return candidate === root || candidate.startsWith(`${root}${path.sep}`) ? candidate : null
 }
 
 async function serveStatic(request, response, url) {
