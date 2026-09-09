@@ -44,7 +44,7 @@ function respond(car) {
     if (/\/cars\/[^/]+$/.test(url)) return json(car)
     if (url.includes('/logs/')) return json([log])
     if (url.includes('/reminders/')) return json([reminder])
-    if (url.includes('/stats/')) return json({ log_count: 1 })
+    if (url.includes('/stats/')) return json({ log_count: 1, cost_by_done_by: {} })
     if (url.includes('/planned-mods/')) return json([mod])
     if (url.includes('/nhtsa/')) return json({ recalls: [] })
     throw new Error(`Unexpected request: ${url}`)
@@ -132,6 +132,20 @@ describe('vehicle permission boundaries', () => {
     await wrapper.find('.delete').trigger('click')
     await flushPromises()
     expect(fetch.mock.calls.some(([url, init]) => url.endsWith('/logs/log-1') && init.method === 'DELETE')).toBe(true)
+  })
+
+  it('offers an empty spend action and opens the maintenance create form', async () => {
+    respond(vehicle(access('edit', 'none')))
+    await render(CarDetailView, '/car/car-1')
+
+    expect(wrapper.get('.spend-empty').text()).toContain('No maintenance spend yet')
+    expect(wrapper.get('.spend-empty a').attributes('href')).toBe('/maintenance/car-1?add=1')
+    expect(wrapper.find('details.vehicle-profile').exists()).toBe(false)
+    expect(wrapper.get('section.vehicle-profile').text()).toContain('Vehicle profile')
+
+    wrapper.unmount()
+    await render(MaintenanceView, '/maintenance/car-1?add=1')
+    expect(wrapper.findComponent({ name: 'MaintenanceForm' }).exists()).toBe(true)
   })
 
   it('allows mod editors to delete and move parts independently of maintenance', async () => {

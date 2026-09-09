@@ -17,7 +17,7 @@
     <div v-else class="timeline">
       <div v-for="log in maintenances" :key="log._id" class="timeline-entry">
         <span class="timeline-node"></span>
-        <MaintenanceLogCard :log="log" :read-only="readOnly" @delete="$emit('delete', $event)" @edit="$emit('edit', $event)" />
+        <MaintenanceLogCard :log="log" :read-only="readOnly" :current-mileage="currentMileage" @delete="$emit('delete', $event)" @edit="$emit('edit', $event)" />
       </div>
     </div>
   </section>
@@ -37,6 +37,10 @@ defineProps({
   hasRecords: {
     type: Boolean,
     default: false
+  },
+  currentMileage: {
+    type: Number,
+    default: null
   }
 })
 </script>

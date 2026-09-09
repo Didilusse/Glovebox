@@ -31,7 +31,7 @@
         <span v-if="log.source" class="source">Imported from {{ log.source.toUpperCase() }}</span>
       </div>
 
-      <div v-if="log.reminder_date || log.reminder_mileage" class="reminder">
+      <div v-if="log.reminder_date || log.reminder_mileage" class="reminder" :style="{ '--reminder-progress': `${reminderProgress}%` }">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5a4 4 0 0 0-4 4v2.3L4.5 13h11L14 9.8V7.5a4 4 0 0 0-4-4ZM8.5 15.5h3" /></svg>
         <span>Next service</span>
         <strong>{{ reminderText }}</strong>
@@ -54,7 +54,11 @@
 <script setup>
 import { computed } from 'vue'
 
-const props = defineProps({ log: { type: Object, required: true }, readOnly: Boolean })
+const props = defineProps({
+  log: { type: Object, required: true },
+  readOnly: Boolean,
+  currentMileage: { type: Number, default: null }
+})
 defineEmits(['delete', 'edit'])
 
 const parsedDate = computed(() => props.log.date_of_service ? new Date(`${props.log.date_of_service}T00:00:00Z`) : null)
@@ -73,6 +77,20 @@ const reminderText = computed(() => {
   if (props.log.reminder_date) parts.push(formatDate(props.log.reminder_date))
   if (props.log.reminder_mileage) parts.push(`${new Intl.NumberFormat().format(props.log.reminder_mileage)} mi`)
   return parts.join(' or ')
+})
+const reminderProgress = computed(() => {
+  const progress = []
+  if (Number.isFinite(props.currentMileage) && Number.isFinite(props.log.mileage) && Number.isFinite(props.log.reminder_mileage)) {
+    const interval = props.log.reminder_mileage - props.log.mileage
+    if (interval > 0) progress.push((props.currentMileage - props.log.mileage) / interval)
+  }
+  if (parsedDate.value && props.log.reminder_date) {
+    const reminderDate = new Date(`${props.log.reminder_date}T00:00:00Z`)
+    const interval = reminderDate.getTime() - parsedDate.value.getTime()
+    if (interval > 0) progress.push((Date.now() - parsedDate.value.getTime()) / interval)
+  }
+  if (!progress.length) return 0
+  return Math.round(Math.min(1, Math.max(0, ...progress)) * 100)
 })
 
 function formatMoney(value) {
@@ -104,7 +122,8 @@ h3 { margin-top: 3px; color: var(--gb-heading); font-size: 1.02rem; font-weight:
 .service-meta span { gap: 5px; color: #aeb7c5; font-size: .73rem; }
 .service-meta svg, .reminder svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
 .service-meta .source { color: #8893a2; }
-.reminder { gap: 7px; margin-top: 12px; padding: 8px 10px; border-radius: 7px; background: rgba(179, 199, 255, .055); color: var(--gb-text-muted); font-size: .73rem; }
+.reminder { position: relative; isolation: isolate; overflow: hidden; gap: 7px; margin-top: 12px; padding: 8px 10px; border-radius: 7px; background: rgba(179, 199, 255, .045); color: var(--gb-text-muted); font-size: .73rem; }
+.reminder::before { position: absolute; z-index: -1; inset: 0 auto 0 0; width: var(--reminder-progress); background: rgba(179, 199, 255, .075); content: ''; transition: width .25s ease; }
 .reminder svg { color: var(--gb-accent); }
 .reminder strong { margin-left: auto; color: var(--gb-heading); font-size: .73rem; font-weight: 600; }
 .notes { margin-top: 11px; color: var(--gb-text-muted); font-size: .8rem; line-height: 1.5; }

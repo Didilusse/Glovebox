@@ -35,7 +35,6 @@
         <div>
           <p class="section-kicker">Vehicle status</p>
           <h2 id="status-heading">{{ dueCount ? `${dueCount} ${dueCount === 1 ? 'service needs' : 'services need'} attention` : 'Everything looks on track' }}</h2>
-          <p>{{ dueCount ? 'Review the due items and plan your next service.' : remindersLoading ? 'Checking your maintenance schedule...' : 'No maintenance reminders are currently due.' }}</p>
         </div>
         <button v-if="canView('maintenance')" type="button" @click="activateTab('reminders')">{{ dueCount ? 'Review reminders' : 'View schedule' }}</button>
       </div>
@@ -47,13 +46,30 @@
       </dl>
     </section>
 
+    <section v-if="car" class="dashboard-section vehicle-profile" aria-labelledby="vehicle-details-heading">
+      <div class="profile-heading">
+        <span class="section-kicker">Vehicle</span>
+        <h2 id="vehicle-details-heading">Vehicle profile</h2>
+      </div>
+      <dl class="vehicle-details" aria-labelledby="vehicle-details-heading">
+        <div><dt>Model</dt><dd>{{ model || 'N/A' }}</dd></div>
+        <div><dt>Year</dt><dd>{{ year || 'N/A' }}</dd></div>
+        <div><dt>Current mileage</dt><dd>{{ mileage === '' ? 'N/A' : `${formatNumber(mileage)} mi` }}</dd></div>
+        <div><dt>Starting mileage</dt><dd>{{ initial_mileage === '' ? 'N/A' : `${formatNumber(initial_mileage)} mi` }}</dd></div>
+        <div><dt>License plate</dt><dd>{{ license_plate || 'N/A' }}</dd></div>
+         <div><dt>Fuel type</dt><dd>{{ fuel_type ? formatFuel(fuel_type) : 'N/A' }}</dd></div>
+        <div class="detail-wide"><dt>VIN</dt><dd>{{ vin || 'N/A' }}</dd></div>
+        <div><dt>Purchased</dt><dd>{{ purchased_date || 'N/A' }}</dd></div>
+        <div><dt>Purchase price</dt><dd>{{ formatCurrency(purchased_price) }}</dd></div>
+      </dl>
+    </section>
+
     <section class="dashboard-section car-stats" v-if="canView('maintenance') && stats" aria-labelledby="stats-heading">
       <div class="section-heading">
         <div>
           <p class="section-kicker">Maintenance</p>
           <h2 id="stats-heading">Service history</h2>
         </div>
-        <p>A clear view of your maintenance activity and spend.</p>
       </div>
       <div class="stats-grid">
         <p><strong>Service records</strong><span>{{ formatNumber(stats.log_count) }}</span></p>
@@ -66,37 +82,22 @@
       <div v-if="stats.cost_by_done_by" class="cost-breakdown">
         <div class="breakdown-heading">
           <h3>Spend by provider</h3>
-          <p>How maintenance costs are split.</p>
         </div>
-        <dl>
+        <dl v-if="hasProviderSpend">
           <div v-for="(val, key) in stats.cost_by_done_by" :key="key">
             <dt>{{ key }} <span>{{ val.count }} {{ val.count === 1 ? 'service' : 'services' }}</span></dt>
             <dd>{{ formatCurrency(val.total_spent) }}</dd>
           </div>
         </dl>
+        <div v-else class="spend-empty">
+          <span class="spend-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m15.2 6.6 2.2-2.2a4.3 4.3 0 0 1-5.7 5.7l-6.4 6.4a1.5 1.5 0 0 0 2.2 2.2l6.4-6.4a4.3 4.3 0 0 0 5.7-5.7l-2.2 2.2-2.2-2.2Z" /></svg>
+          </span>
+          <span class="spend-empty-copy"><strong>No maintenance spend yet</strong><small>Log completed work to start tracking providers and costs.</small></span>
+          <RouterLink v-if="canEdit('maintenance')" :to="{ path: `/maintenance/${carId}`, query: { add: '1' } }">Log service</RouterLink>
+        </div>
       </div>
     </section>
-
-    <details v-if="car" class="dashboard-section vehicle-profile">
-      <summary>
-        <span>
-          <span class="section-kicker">Vehicle profile</span>
-          <strong id="vehicle-details-heading">Registration and purchase details</strong>
-        </span>
-        <span class="summary-action">View details <span aria-hidden="true">+</span></span>
-      </summary>
-      <dl class="vehicle-details" aria-labelledby="vehicle-details-heading">
-        <div><dt>Model</dt><dd>{{ model || 'N/A' }}</dd></div>
-        <div><dt>Year</dt><dd>{{ year || 'N/A' }}</dd></div>
-        <div><dt>Current mileage</dt><dd>{{ mileage === '' ? 'N/A' : `${formatNumber(mileage)} mi` }}</dd></div>
-        <div><dt>Starting mileage</dt><dd>{{ initial_mileage === '' ? 'N/A' : `${formatNumber(initial_mileage)} mi` }}</dd></div>
-        <div><dt>License plate</dt><dd>{{ license_plate || 'N/A' }}</dd></div>
-         <div><dt>Fuel type</dt><dd>{{ fuel_type ? formatFuel(fuel_type) : 'N/A' }}</dd></div>
-        <div class="detail-wide"><dt>VIN</dt><dd>{{ vin || 'N/A' }}</dd></div>
-        <div><dt>Purchased</dt><dd>{{ purchased_date || 'N/A' }}</dd></div>
-        <div><dt>Purchase price</dt><dd>{{ formatCurrency(purchased_price) }}</dd></div>
-      </dl>
-    </details>
     </div>
     <section id="reminders-panel" role="tabpanel" aria-labelledby="reminders-tab" tabindex="0" class="car-reminders" v-if="canView('maintenance')" v-show="activeTab === 'reminders'">
       <h2>Reminders</h2>
@@ -142,6 +143,7 @@ let reminderTimer
 onBeforeUnmount(() => clearInterval(reminderTimer))
 watch(() => route.query.tab, tab => { activeTab.value = tab === 'reminders' ? 'reminders' : 'overview' })
 const dueCount = computed(() => reminders.value.filter(r => r.is_due || r.is_overdue).length)
+const hasProviderSpend = computed(() => Object.keys(stats.value?.cost_by_done_by ?? {}).length > 0)
 async function selectTab(tab) {
   if (tab === 'reminders' && !canView('maintenance')) return
   await activateTab(tab)
@@ -328,7 +330,6 @@ function handleBack() {
 .status-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
 .status-card .section-kicker { margin-bottom: 2px; }
 .status-card h2 { color: var(--gb-heading); font-size: clamp(1.15rem, 2vw, 1.45rem); font-weight: 650; letter-spacing: -0.025em; }
-.status-card h2 + p { margin-top: 4px; color: var(--gb-text-muted); font-size: 0.83rem; }
 .status-card button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--gb-border-strong); border-radius: 8px; background: transparent; color: var(--gb-heading); font-size: 0.78rem; font-weight: 600; cursor: pointer; }
 .status-card button:hover { border-color: var(--gb-accent); color: var(--gb-accent); }
 
@@ -343,7 +344,6 @@ function handleBack() {
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
 .section-heading .section-kicker { margin-bottom: 4px; }
 .section-heading h2 { color: var(--gb-heading); font-size: 1.35rem; font-weight: 650; letter-spacing: -0.02em; }
-.section-heading > p { max-width: 280px; color: var(--gb-text-muted); font-size: 0.84rem; text-align: right; }
 
 .vehicle-details,
 .stats-grid {
@@ -400,27 +400,31 @@ function handleBack() {
   background: var(--gb-background-deep);
 }
 
-.breakdown-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+.breakdown-heading { margin-bottom: 14px; }
 .cost-breakdown h3 {
   color: var(--gb-heading);
   font-size: 1rem;
   font-weight: 600;
 }
-.breakdown-heading p { color: var(--gb-text-muted); font-size: 0.8rem; }
 .cost-breakdown dl { display: grid; gap: 10px; }
 .cost-breakdown dl > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 10px; border-top: 1px solid var(--gb-border); }
 .cost-breakdown dt { color: var(--gb-heading); text-transform: capitalize; }
 .cost-breakdown dt span { margin-left: 7px; color: var(--gb-text-muted); font-size: 0.78rem; }
 .cost-breakdown dd { color: var(--gb-accent); font-weight: 600; }
 
+.spend-empty { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 12px 0 0; border-top: 1px dashed var(--gb-border-strong); }
+.spend-empty-icon { width: 36px; height: 36px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 9px; background: rgba(179, 199, 255, .08); color: var(--gb-accent); }
+.spend-empty-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+.spend-empty-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.spend-empty-copy strong { color: var(--gb-heading); font-size: .84rem; font-weight: 600; }
+.spend-empty-copy small { margin-top: 2px; color: var(--gb-text-muted); font-size: .75rem; }
+.spend-empty a { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--gb-border-strong); border-radius: 7px; color: var(--gb-heading); font-size: .76rem; font-weight: 600; text-decoration: none; }
+.spend-empty a:hover { border-color: var(--gb-accent); color: var(--gb-accent); }
+
 .vehicle-profile { overflow: hidden; border: 1px solid var(--gb-border); border-radius: 12px; background: var(--gb-background-deep); }
-.vehicle-profile summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 19px 22px; cursor: pointer; list-style: none; }
-.vehicle-profile summary::-webkit-details-marker { display: none; }
-.vehicle-profile summary .section-kicker { display: block; margin-bottom: 1px; }
-.vehicle-profile summary strong { display: block; color: var(--gb-heading); font-size: 0.95rem; font-weight: 600; }
-.summary-action { color: var(--gb-text-muted); font-size: 0.76rem; }
-.summary-action span { display: inline-block; margin-left: 7px; color: var(--gb-accent); font-size: 1rem; transition: transform .18s ease; }
-.vehicle-profile[open] .summary-action span { transform: rotate(45deg); }
+.profile-heading { padding: 19px 22px; }
+.profile-heading .section-kicker { margin-bottom: 2px; }
+.profile-heading h2 { color: var(--gb-heading); font-size: 1.15rem; font-weight: 650; letter-spacing: -.02em; }
 .vehicle-profile .vehicle-details { border: 0; border-top: 1px solid var(--gb-border); border-radius: 0; }
 
 .car-reminders { margin-top: 8px; }
@@ -449,8 +453,6 @@ function handleBack() {
   }
 
   .vehicle-actions { justify-content: flex-start; }
-  .section-heading > p { text-align: left; }
-
   .dashboard-summary { grid-template-columns: 1fr; }
   .status-card { grid-template-columns: auto 1fr; min-height: auto; }
   .status-card button { grid-column: 1 / -1; }
@@ -469,9 +471,8 @@ function handleBack() {
   .snapshot-grid > div { border-right: 0; border-bottom: 1px solid var(--gb-border); }
   .snapshot-grid > div:last-child { border-bottom: 0; }
   .vehicle-details { grid-template-columns: 1fr; }
-  .vehicle-profile summary { align-items: flex-start; }
-  .summary-action { font-size: 0; }
-  .summary-action span { font-size: 1rem; }
+  .spend-empty { align-items: flex-start; flex-wrap: wrap; }
+  .spend-empty a { margin-left: 48px; }
 }
 
 </style>

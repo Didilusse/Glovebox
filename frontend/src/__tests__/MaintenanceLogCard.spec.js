@@ -33,4 +33,13 @@ describe('MaintenanceLogCard', () => {
     expect(wrapper.emitted('edit')[0][0]).toEqual(log)
     expect(wrapper.emitted('delete')[0][0]).toBe('log-1')
   })
+
+  it('shows subtle progress toward the next service interval', () => {
+    const mileageReminder = { ...log, reminder_date: null }
+    const wrapper = mount(MaintenanceLogCard, {
+      props: { log: mileageReminder, currentMileage: 95420 }
+    })
+
+    expect(wrapper.get('.reminder').attributes('style')).toContain('--reminder-progress: 50%')
+  })
 })

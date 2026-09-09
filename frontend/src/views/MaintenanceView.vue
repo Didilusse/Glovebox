@@ -7,7 +7,7 @@
     <p v-if="!canEdit('maintenance')">Read-only maintenance access</p>
     <MaintenanceHeader :read-only="!canEdit('maintenance')" :car="car" :maintenances="maintenances" :reminders="reminders" @add="openCreateMaintenance" @import="canEdit('maintenance') && (isImportOpen = true)" />
     <MaintenanceControls v-model:search="search" v-model:sort="sort" v-model:category="category" />
-    <MaintenanceList :read-only="!canEdit('maintenance')" :maintenances="displayedMaintenances" :has-records="maintenances.length > 0" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
+    <MaintenanceList :read-only="!canEdit('maintenance')" :maintenances="displayedMaintenances" :has-records="maintenances.length > 0" :current-mileage="car.mileage" @delete="handleDeleteMaintenance" @edit="openEditMaintenance" />
     </template>
   </main>
 
@@ -68,6 +68,7 @@ const displayedMaintenances = computed(() => filterAndSortMaintenances(maintenan
 onMounted(async () => {
   await handleFetchCar()
   if (canView('maintenance')) await Promise.all([handleFetchMaintenances(), handleFetchReminders()])
+  if (route.query.add === '1') openCreateMaintenance()
 })
 
 async function handleFetchCar() {
