@@ -40,7 +40,7 @@ async def car_reminders(car, today: date | None = None):
         reminders.append(MaintenanceReminder(
             log_id=log.id, car_id=car.id, date_of_service=log.date_of_service,
             mileage=log.mileage, work_done=log.work_done, reminder_date=log.reminder_date,
-            reminder_mileage=log.reminder_mileage, current_mileage=current_mileage,
+            reminder_mileage=log.reminder_mileage, current_mileage=current_mileage, current_date=today,
             interval_miles=log.interval_miles, interval_months=log.interval_months,
             is_due=is_due, due_reason=reason,
             is_overdue=(log.reminder_date is not None and today > log.reminder_date) or (

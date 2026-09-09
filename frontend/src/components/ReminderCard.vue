@@ -1,6 +1,7 @@
 <script setup>
 import { ref, nextTick } from 'vue'
 import { useApiRequest } from '../utils/auth'
+import { sanitizeWholeNumberInput } from '../utils/numericInput'
 const props = defineProps({ reminder: { type: Object, required: true }, carId: String, editable: Boolean })
 const emit = defineEmits(['updated'])
 const request = useApiRequest()
@@ -11,6 +12,10 @@ const saving = ref(false)
 const error = ref('')
 const firstInput = ref(null)
 const editButton = ref(null)
+const mileageFormatter = new Intl.NumberFormat('en-US')
+const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatMileage(value) { return mileageFormatter.format(value) }
+function formatDate(value) { return dateFormatter.format(new Date(`${value}T00:00:00`)) }
 async function edit() {
   miles.value = props.reminder.interval_miles ?? ''
   months.value = props.reminder.interval_months ?? ''
@@ -47,7 +52,8 @@ async function save() {
         <p class="measure-label">Mileage</p>
         <p v-if="reminder.interval_miles != null" class="measure-detail">Every {{ reminder.interval_miles }} mi</p>
         <p class="measure-target">Due at {{ reminder.reminder_mileage ?? 'unknown' }} mi</p>
-        <label v-if="reminder.progress_miles != null">Mileage progress <span>{{ Math.round(reminder.progress_miles) }}%</span>
+        <label v-if="reminder.progress_miles != null" class="progress-measure">
+          <span>{{ formatMileage(reminder.current_mileage) }} / {{ formatMileage(reminder.reminder_mileage) }} mi ({{ Math.round(reminder.progress_miles) }}%)</span>
           <progress :value="reminder.progress_miles" max="100" aria-label="Mileage progress" />
         </label>
         <p v-else>Mileage progress unavailable</p>
@@ -56,7 +62,8 @@ async function save() {
         <p class="measure-label">Time</p>
         <p v-if="reminder.interval_months != null" class="measure-detail">Every {{ reminder.interval_months }} months</p>
         <p class="measure-target">Due {{ reminder.reminder_date ?? 'unknown' }}</p>
-        <label v-if="reminder.progress_time != null">Time progress <span>{{ Math.round(reminder.progress_time) }}%</span>
+        <label v-if="reminder.progress_time != null" class="progress-measure">
+          <span>{{ formatDate(reminder.current_date) }} / {{ formatDate(reminder.reminder_date) }} ({{ Math.round(reminder.progress_time) }}%)</span>
           <progress :value="reminder.progress_time" max="100" aria-label="Time progress" />
         </label>
         <p v-else>Time progress unavailable</p>
@@ -65,7 +72,7 @@ async function save() {
     <p v-if="reminder.due_reason" class="due-reason">{{ reminder.due_reason === 'both' ? 'Both the time and mileage limits have been reached.' : reminder.due_reason === 'date' ? 'The scheduled service date has been reached.' : 'The service mileage limit has been reached.' }}</p>
     <form v-if="editing && editable" @submit.prevent="save" @keydown.esc.prevent="cancel">
       <p>Clear an interval to disable it. Clear both to remove this reminder.</p>
-      <label>Mileage interval (miles)<input ref="firstInput" v-model.number="miles" type="number" min="1" step="1" :disabled="saving" /></label>
+      <label>Mileage interval (miles)<input ref="firstInput" :value="miles" inputmode="numeric" :disabled="saving" @input="miles = sanitizeWholeNumberInput($event)" /></label>
       <label>Time interval (months)<input v-model.number="months" type="number" min="1" step="1" :disabled="saving" /></label>
       <p v-if="error" role="alert">{{ error }}</p>
       <button type="submit" :disabled="saving">{{ saving ? 'Saving...' : 'Save reminder' }}</button>
@@ -93,6 +100,8 @@ h3 { color: var(--gb-heading); font-size: 1.05rem; font-weight: 650; line-height
 .measure-target { margin-top: 1px; color: var(--gb-text-muted); font-size: 0.8rem; }
 label { display: grid; grid-template-columns: 1fr auto; gap: 5px; margin-top: 10px; color: var(--gb-text-muted); font-size: 0.76rem; }
 label span { color: var(--gb-text); }
+.progress-measure { display: block; }
+.progress-measure span { display: block; margin-bottom: 5px; text-align: right; }
 progress { grid-column: 1 / -1; display: block; width: 100%; height: 5px; accent-color: var(--gb-accent); }
 .overdue progress { accent-color: var(--gb-danger); }
 input { width: 100%; padding: 8px; background: var(--gb-background-deep); color: var(--gb-heading); border: 1px solid var(--gb-border-strong); border-radius: 6px; }

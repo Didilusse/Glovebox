@@ -30,7 +30,7 @@
             </div>
             <div class="field">
               <label for="mileage">Odometer</label>
-              <div class="input-suffix"><input id="mileage" v-model.number="mileage" type="number" min="0" :class="{ invalid: submitted && !hasMileage }" /><span>mi</span></div>
+              <div class="input-suffix"><input id="mileage" :value="mileage" inputmode="numeric" :class="{ invalid: submitted && !hasMileage }" @input="mileage = sanitizeWholeNumberInput($event)" /><span>mi</span></div>
               <small v-if="submitted && !hasMileage" class="error">Mileage is required.</small>
             </div>
             <div class="field">
@@ -82,7 +82,7 @@
             </div>
             <div class="field">
               <label for="interval_miles">Mileage interval</label>
-              <div class="input-suffix"><input id="interval_miles" v-model.number="intervalMiles" type="number" min="1" placeholder="e.g. 5000" @input="reminderTouched = true" /><span>mi</span></div>
+              <div class="input-suffix"><input id="interval_miles" :value="intervalMiles" inputmode="numeric" placeholder="e.g. 5000" @input="intervalMiles = sanitizeWholeNumberInput($event); reminderTouched = true" /><span>mi</span></div>
             </div>
             <small>Clear either interval to disable it, or both to remove the reminder.</small>
           </div>
@@ -105,6 +105,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useApiRequest } from '../utils/auth'
+import { sanitizeWholeNumberInput } from '../utils/numericInput'
 
 const props = defineProps({
   mode: { type: String, default: 'create' },
@@ -133,7 +134,7 @@ let defaultsRequest
 const isOilChange = computed(() => /\boil\b/i.test(workDone.value) && /\bchang(?:e|ed|ing)\b/i.test(workDone.value))
 
 const isEditMode = computed(() => props.mode === 'edit')
-const hasMileage = computed(() => isEditMode.value || (mileage.value !== null && mileage.value !== '' && Number(mileage.value) >= 0))
+const hasMileage = computed(() => isEditMode.value || (mileage.value !== null && mileage.value !== '' && Number.isInteger(Number(mileage.value))))
 const hasCost = computed(() => isEditMode.value || (cost.value !== null && cost.value !== '' && Number(cost.value) >= 0))
 
 watch(

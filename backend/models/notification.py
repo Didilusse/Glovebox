@@ -6,7 +6,7 @@ from pymongo import IndexModel
 
 
 class ReminderPreferences(BaseModel):
-    oil_interval_miles: int | None = Field(5000, gt=0, le=1000000)
+    oil_interval_miles: int | None = Field(5000, gt=0, le=1000000, strict=True)
     oil_interval_months: int | None = Field(6, gt=0, le=1200)
     webhook_url: str | None = Field(None, max_length=2048)
     discord_webhook_url: str | None = Field(None, max_length=2048)

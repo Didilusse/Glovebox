@@ -10,7 +10,7 @@ import MaintenanceForm from '../components/MaintenanceForm.vue'
 import { setSession } from '../utils/auth'
 
 const settings = { oil_interval_miles: 5000, oil_interval_months: 6, webhook_url: null, discord_webhook_url: null, email: null, email_available: false }
-const reminder = { log_id: 'log-1', car_id: 'car-1', car_name: 'Shared Toyota', work_done: 'Oil change', interval_miles: 5000, interval_months: 6, progress_miles: 100, progress_time: 45, is_due: true, is_overdue: true }
+const reminder = { log_id: 'log-1', car_id: 'car-1', car_name: 'Shared Toyota', work_done: 'Oil change', interval_miles: 5000, interval_months: 6, current_mileage: 6000, reminder_mileage: 6000, current_date: '2020-03-23', reminder_date: '2020-07-01', progress_miles: 100, progress_time: 45, is_due: true, is_overdue: true }
 const notification = { _id: 'n-1', car_id: 'car-1', log_id: 'log-1', title: 'Oil change due', message: 'Service your Toyota', created_at: '2026-09-01T12:00:00Z', read: false }
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status })
 let wrapper
@@ -65,6 +65,8 @@ describe('reminder cards and dashboard', () => {
     await render(ReminderCard, { reminder, carId: 'car-1', editable: true })
     expect(wrapper.classes()).toContain('overdue')
     expect(wrapper.findAll('progress').map(p => p.attributes('value'))).toEqual(['100', '45'])
+    expect(wrapper.text()).toContain('6,000 / 6,000 mi (100%)')
+    expect(wrapper.text()).toContain('Mar 23, 2020 / Jul 1, 2020 (45%)')
     await wrapper.find('button').trigger('click')
     for (const input of wrapper.findAll('input')) await input.setValue('')
     await wrapper.find('form').trigger('submit'); await flushPromises()

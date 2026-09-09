@@ -59,7 +59,7 @@
             <div class="record-fields">
               <div class="field-row compact">
                 <label>Date<input v-model="record.date_of_service" type="date" /></label>
-                <label>Mileage<input v-model.number="record.mileage" type="number" min="0" placeholder="Unknown" /></label>
+                <label>Mileage<input :value="record.mileage" inputmode="numeric" placeholder="Unknown" @input="record.mileage = sanitizeWholeNumberInput($event)" /></label>
                 <label>Category
                   <select v-model="record.category">
                     <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
@@ -93,6 +93,7 @@
 import { useApiClient } from '../utils/auth'
 const fetch = useApiClient()
 import { computed, ref } from 'vue'
+import { sanitizeWholeNumberInput } from '../utils/numericInput'
 
 const props = defineProps({
   carId: { type: String, required: true },
@@ -171,6 +172,7 @@ async function confirmImport() {
   const selectedRecords = records.value.filter(record => record.selected && !record.duplicate).map(record => {
     const payload = {}
     for (const field of allowedFields) payload[field] = record[field] === '' ? null : record[field]
+    if (payload.mileage !== null) payload.mileage = Number(payload.mileage)
     return payload
   })
   try {

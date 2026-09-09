@@ -15,6 +15,10 @@ def test_car_schema_rejects_unknown_and_invalid_values():
     with pytest.raises(ValidationError):
         CarCreate(make="A", model="B", year=2020, mileage=-1)
 
+    for mileage in ("100", 100.5):
+        with pytest.raises(ValidationError):
+            CarCreate(make="A", model="B", year=2020, mileage=mileage)
+
     with pytest.raises(ValidationError):
         CarUpdate(mileage=None)
 
@@ -25,6 +29,11 @@ def test_car_schema_rejects_unknown_and_invalid_values():
             year=2020,
             purchased_date=date.today() + timedelta(days=1),
         )
+
+
+def test_car_schema_allows_negative_purchase_prices():
+    assert CarCreate(make="A", model="B", year=2020, purchased_price=-100.10).purchased_price == -100.10
+    assert CarUpdate(purchased_price=-25.50).purchased_price == -25.50
 
 
 def test_maintenance_schema_distinguishes_clearing_from_required_nulls():
@@ -39,6 +48,14 @@ def test_maintenance_schema_distinguishes_clearing_from_required_nulls():
             done_by="shop",
             mileage=10,
             cost=-1,
+            work_done="Oil change",
+        )
+
+    with pytest.raises(ValidationError):
+        MaintenanceLogCreate(
+            done_by="shop",
+            mileage="10",
+            cost=1,
             work_done="Oil change",
         )
 

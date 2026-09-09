@@ -39,7 +39,7 @@
         <label>Year<input v-model.number="vehicle.year" type="number" min="1886" :max="maxVehicleYear" /></label>
         <label>Make<input v-model.trim="vehicle.make" /></label>
         <label class="model-field">Model<input v-model.trim="vehicle.model" /></label>
-        <label>Current mileage<input v-model.number="vehicle.mileage" type="number" min="0" placeholder="Unknown" /></label>
+        <label>Current mileage<input :value="vehicle.mileage" inputmode="numeric" placeholder="Unknown" @input="vehicle.mileage = sanitizeWholeNumberInput($event)" /></label>
         <label>Fuel type
           <select v-model="vehicle.fuel_type">
             <option value="gas">Gasoline</option>
@@ -74,6 +74,7 @@
 import { useApiClient } from '../utils/auth'
 const fetch = useApiClient()
 import { computed, ref } from 'vue'
+import { sanitizeWholeNumberInput } from '../utils/numericInput'
 
 const props = defineProps({ apiBase: { type: String, required: true } })
 const emit = defineEmits(['created', 'cancel'])
@@ -88,7 +89,7 @@ const validVehicle = computed(() => {
   const value = vehicle.value
   return Number.isInteger(value.year) && value.year >= 1886 && value.year <= maxVehicleYear &&
     Boolean(value.make?.trim()) && Boolean(value.model?.trim()) &&
-    (value.mileage === null || value.mileage === '' || (Number.isFinite(Number(value.mileage)) && Number(value.mileage) >= 0))
+    (value.mileage === null || value.mileage === '' || Number.isInteger(Number(value.mileage)))
 })
 
 function selectFile(event) {
@@ -144,7 +145,7 @@ async function confirm() {
     make: vehicle.value.make.trim(),
     model: vehicle.value.model.trim(),
     vin: preview.value.report.vin,
-    mileage: vehicle.value.mileage === '' ? null : vehicle.value.mileage,
+    mileage: vehicle.value.mileage === '' ? null : Number(vehicle.value.mileage),
     fuel_type: vehicle.value.fuel_type
   }
   if (vehicle.value.license_plate) vehiclePayload.license_plate = vehicle.value.license_plate

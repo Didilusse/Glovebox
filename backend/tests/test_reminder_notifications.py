@@ -239,6 +239,7 @@ def test_progress_missing_axes_unknown_mileage_and_clamping(
 
     reminder, = api_client.portal.call(read)
     assert reminder.current_mileage == current
+    assert reminder.current_date == date(2020, 4, 1)
     assert reminder.progress_miles == expected_miles
     assert reminder.progress_time == expected_time
     if current is None:

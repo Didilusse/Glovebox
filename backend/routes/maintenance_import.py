@@ -30,7 +30,7 @@ async def get_import_car(car: CarModel = Depends(get_maintenance_car)) -> CarMod
 
 class ImportRecord(BaseModel):
     date_of_service: date
-    mileage: int | None = Field(None, ge=0)
+    mileage: int | None = Field(None, ge=0, strict=True)
     cost: float | None = Field(None, ge=0, allow_inf_nan=False)
     done_by: DoneBy = DoneBy.shop
     work_done: str = Field(min_length=1, max_length=500)

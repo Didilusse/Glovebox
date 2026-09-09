@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import NavBar from '../components/NavBar.vue'
 import { useApiRequest } from '../utils/auth'
+import { sanitizeWholeNumberInput } from '../utils/numericInput'
 
 const request = useApiRequest()
 const form = reactive({ oil_interval_miles: 5000, oil_interval_months: 6, webhook_url: '', discord_webhook_url: '', email: '' })
@@ -26,6 +27,7 @@ async function save() {
   if (saving.value || !loaded.value) return
   error.value = ''; message.value = ''
   const body = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, typeof value === 'string' ? value.trim() || null : value]))
+  if (body.oil_interval_miles !== null) body.oil_interval_miles = Number(body.oil_interval_miles)
   for (const key of ['webhook_url', 'discord_webhook_url']) {
     if (!body[key]) continue
     try { if (new URL(body[key]).protocol !== 'https:') throw new Error() }
@@ -52,7 +54,7 @@ onMounted(load)
         <legend>Oil change defaults</legend>
         <p>Used for new oil changes only. Clear either interval to disable it.</p>
         <label for="oil-miles">Mileage interval (miles)</label>
-        <input id="oil-miles" v-model.number="form.oil_interval_miles" type="number" min="1" max="1000000" step="1" />
+        <input id="oil-miles" :value="form.oil_interval_miles" inputmode="numeric" @input="form.oil_interval_miles = sanitizeWholeNumberInput($event)" />
         <label for="oil-months">Time interval (months)</label>
         <input id="oil-months" v-model.number="form.oil_interval_months" type="number" min="1" max="1200" step="1" />
       </fieldset>
