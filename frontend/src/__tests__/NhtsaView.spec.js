@@ -9,7 +9,7 @@ describe('NhtsaView', () => {
   it('renders recall campaign details and the VIN status link', async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ _id: 'car-1', access: { is_owner: true } })
+      json: async () => ({ _id: 'car-1', year: 2020, make: 'Toyota', model: 'Camry', access: { is_owner: true } })
     }).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -54,5 +54,6 @@ describe('NhtsaView', () => {
     expect(wrapper.text()).toContain('20UF')
     expect(wrapper.text()).toContain('FUEL SYSTEM, GASOLINE')
     expect(wrapper.find('.lookup-link').attributes('href')).toBe('https://www.nhtsa.gov/recalls#vehicle')
+    expect(wrapper.get('.vin-mismatch').text()).toContain('saved vehicle is 2020 Toyota Camry')
   })
 })

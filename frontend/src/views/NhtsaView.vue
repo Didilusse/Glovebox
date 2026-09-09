@@ -39,6 +39,10 @@
           </div>
         </dl>
       </section>
+      <aside v-if="vinMismatch" class="vin-mismatch" role="alert">
+        <strong>Check this vehicle's details</strong>
+        <span>The saved vehicle is {{ savedVehicleName }}, but VIN {{ vin }} decodes to {{ vehicleName }}{{ vehicleYear !== 'N/A' ? ` (${vehicleYear})` : '' }}.</span>
+      </aside>
     </header>
 
     <div v-if="loading" class="board-message">
@@ -53,20 +57,31 @@
     </div>
 
     <div v-else-if="data" class="content">
-      <section v-if="decodeFields.length" class="section">
+      <section v-if="vehicleIdentity.length" class="section vehicle-profile">
         <div class="section-heading">
           <div>
             <span class="section-kicker">Decoded from VIN</span>
             <h2>Vehicle information</h2>
           </div>
-          <span class="section-count">{{ decodeFields.length }} details</span>
+          <span class="section-count">NHTSA vehicle profile</span>
         </div>
-        <dl class="detail-grid">
-          <div v-for="field in decodeFields" :key="field.label">
+        <dl class="identity-strip">
+          <div v-for="field in vehicleIdentity" :key="field.label">
             <dt>{{ field.label }}</dt>
             <dd>{{ field.value }}</dd>
           </div>
         </dl>
+        <div v-if="vehicleSpecificationGroups.length" class="specification-groups">
+          <section v-for="group in vehicleSpecificationGroups" :key="group.title" class="specification-group">
+            <h3>{{ group.title }}</h3>
+            <dl>
+              <div v-for="field in group.fields" :key="field.label">
+                <dt>{{ field.label }}</dt>
+                <dd>{{ field.value }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
       </section>
 
       <section v-if="selectedRating" class="section">
@@ -198,28 +213,22 @@ const vehicleName = computed(() => {
 })
 const vehicleYear = computed(() => decodedFields.value['Model Year'] || 'N/A')
 const overallRating = computed(() => selectedRating.value?.OverallRating || 'Not rated')
+const savedVehicleName = computed(() => [car.value?.year, car.value?.make, car.value?.model].filter(Boolean).join(' '))
+const vinMismatch = computed(() => {
+  const decodedMake = decode.value?.make || decodedFields.value.Make
+  const decodedModel = decode.value?.model || decodedFields.value.Model
+  const decodedYear = decode.value?.year || decodedFields.value['Model Year']
+  if (!car.value || !decodedMake || !decodedModel || !decodedYear) return false
+  return String(car.value.year) !== String(decodedYear) ||
+    normalizeVehicleName(car.value.make) !== normalizeVehicleName(decodedMake) ||
+    normalizeVehicleName(car.value.model) !== normalizeVehicleName(decodedModel)
+})
 
-const DECODE_LABELS = [
-  'Make',
-  'Model',
-  'Model Year',
-  'Manufacturer Name',
-  'Vehicle Type',
-  'Body Class',
-  'Doors',
-  'Engine Model',
-  'Engine Configuration',
-  'Displacement (L)',
-  'Fuel Type - Primary',
-  'Transmission Style',
-  'Transmission Speeds',
-  'Drive Type',
-  'Plant Country',
-]
-
-const decodeFields = computed(() => DECODE_LABELS
-  .filter(label => decodedFields.value[label])
-  .map(label => ({ label, value: decodedFields.value[label] })))
+const vehicleIdentity = computed(() => vehicleFields(['Model Year', 'Make', 'Model', 'Body Class', 'Vehicle Type']))
+const vehicleSpecificationGroups = computed(() => [
+  { title: 'Powertrain', fields: vehicleFields(['Engine Model', 'Engine Configuration', 'Displacement (L)', 'Fuel Type - Primary', 'Drive Type', 'Transmission Style', 'Transmission Speeds']) },
+  { title: 'Built by', fields: vehicleFields(['Manufacturer Name', 'Plant Country', 'Doors']) }
+].filter(group => group.fields.length))
 
 const RATING_LABELS = [
   'OverallRating',
@@ -238,6 +247,16 @@ const ratingFields = computed(() => RATING_LABELS
 
 function formatRatingLabel(label) {
   return label.replace(/([A-Z])/g, ' $1').trim()
+}
+
+function vehicleFields(labels) {
+  return labels
+    .filter(label => decodedFields.value[label])
+    .map(label => ({ label, value: decodedFields.value[label] }))
+}
+
+function normalizeVehicleName(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 onMounted(loadData)
@@ -414,6 +433,21 @@ dt,
 
 .overview dl div + div { border-left: 1px solid rgba(179, 199, 255, 0.1); }
 
+.vin-mismatch {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 18px;
+  border: 1px solid rgba(240, 201, 131, 0.35);
+  border-radius: 12px;
+  background: rgba(240, 201, 131, 0.08);
+  color: #f0c983;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.vin-mismatch strong { color: #f7d89d; font-size: 0.9rem; }
+
 dd {
   margin-top: 2px;
   color: var(--gb-heading);
@@ -474,9 +508,9 @@ dd small {
   font-weight: 650;
 }
 
-.detail-grid {
+.identity-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--gb-border);
@@ -484,8 +518,26 @@ dd small {
   background: var(--gb-border);
 }
 
-.detail-grid div { min-width: 0; padding: 16px 18px; background: var(--gb-surface); }
-.detail-grid dd { overflow: hidden; margin-top: 4px; text-overflow: ellipsis; white-space: nowrap; }
+.identity-strip div { min-width: 0; padding: 17px 18px; background: var(--gb-surface); }
+.identity-strip dd { overflow: hidden; margin-top: 4px; text-overflow: ellipsis; white-space: nowrap; }
+
+.specification-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.specification-group {
+  padding: 18px;
+  border: 1px solid var(--gb-border);
+  border-radius: 12px;
+  background: var(--gb-surface);
+}
+
+.specification-group h3 { color: var(--gb-heading); font-size: 0.9rem; font-weight: 650; }
+.specification-group dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; margin-top: 16px; }
+.specification-group dd { overflow-wrap: anywhere; margin-top: 3px; font-size: 0.9rem; }
 
 .rating-grid {
   display: grid;
@@ -588,7 +640,7 @@ dd small {
 
 @media (max-width: 700px) {
   .nhtsa-page { width: min(100% - 28px, 1200px); padding-top: 36px; }
-  .detail-grid { grid-template-columns: 1fr 1fr; }
+  .identity-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 540px) {
@@ -603,5 +655,7 @@ dd small {
   .lookup-link { align-self: flex-start; }
   .recall-summary { gap: 12px; }
   .recall-item { padding: 16px; }
+  .identity-strip { grid-template-columns: 1fr 1fr; }
+  .specification-groups { grid-template-columns: 1fr; }
 }
 </style>
